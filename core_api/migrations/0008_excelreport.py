@@ -15,8 +15,8 @@ class Migration(migrations.Migration):
             fields=[
             ],
             options={
-                'verbose_name': '📥 Download Excel (CSV)',
-                'verbose_name_plural': '📥 Download Excel (CSV)',
+                'verbose_name': 'Download Excel (CSV)',
+                'verbose_name_plural': 'Download Excel (CSV)',
                 'proxy': True,
                 'indexes': [],
                 'constraints': [],

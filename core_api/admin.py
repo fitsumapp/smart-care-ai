@@ -459,16 +459,8 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
 
 # ================================================================
-# 1. 📥 Excel/CSV Export (removed from sidebar, still available via /export/csv/)
+# 1. Excel/CSV Export available via /export/csv/ and Reports page
 # ================================================================
-class ExcelReport(AICallLog):
-    class Meta:
-        proxy = True
-        verbose_name = 'Download Excel (CSV Report)'
-        verbose_name_plural = 'Download Excel (CSV Report)'
-
-# NOTE: ExcelReport admin registration removed to hide from sidebar.
-# CSV export remains accessible via /export/csv/ URL and the diagnostics page.
 
 # ================================================================
 # 2. 👩‍⚕️ Nurse Management & RFID Cards

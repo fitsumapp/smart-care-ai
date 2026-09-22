@@ -56,6 +56,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterModelOptions(
             name='excelreport',
-            options={'verbose_name': '📥 Download Excel (CSV Report)', 'verbose_name_plural': '📥 Download Excel (CSV Report)'},
+            options={'verbose_name': 'Download Excel (CSV Report)', 'verbose_name_plural': 'Download Excel (CSV Report)'},
         ),
     ]
