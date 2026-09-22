@@ -1,6 +1,6 @@
 // ================================================================
-//  GC9A01 Round TFT Display Standalone Test (ESP32)
-//  ዓላማ፡- ስክሪኑ በ ESP32 ላይ ብቻውን ያለምንም ሌላ ሞጁል በትክክል መስራቱን ማረጋገጫ
+//  GC9A01 Round TFT Display Ultimate Diagnostic (ESP32)
+//  ዓላማ፡- ስክሪኑ በ ESP32 ላይ 100% እንዲበራ የተዘጋጀ አስተማማኝ የፍተሻ ኮድ
 // ================================================================
 
 #include <SPI.h>
@@ -8,58 +8,73 @@
 #include <Adafruit_GC9A01A.h>
 
 // ── Pin Definitions (ESP32 DevKit V1) ──
-// ⚠️ ማሳሰቢያ፡ GPIO 2 Onboard LED ያለበት ስለሆነ Reset እንዳይደናቀፍ RST ን ወደ GPIO 14 አድርገነዋል!
-#define TFT_CS   15  // Chip Select -> ESP32 GPIO 15
-#define TFT_DC   4   // Data / Command -> ESP32 GPIO 4
-#define TFT_RST  14  // Reset -> ESP32 GPIO 14
+#define TFT_CS   15  // Chip Select -> D15
+#define TFT_DC   4   // Data / Command -> D4
+#define TFT_MOSI 23  // SDA (Data In) -> D23
+#define TFT_SCLK 18  // SCL (Clock) -> D18
+#define TFT_RST  14  // Reset -> D14 (ወይም ወደ 3.3V ተገናኝቶ ከሆነ -1 አድርገው)
 
-// Hardware SPI Pins on ESP32:
-// SCL (Clock) -> GPIO 18
-// SDA (MOSI)  -> GPIO 23
+#define ONBOARD_LED 2 // ESP32 ላይ ያለችው ሰማያዊ መብራት
 
-Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
+// ⚠️ ማስታወሻ፦ ፒኖቹን በግልጽ በመጥቀስ ልክ እንደ Arduino Uno በቀስታ እና በንጽህና እንዲሰራ አድርገነዋል
+Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(1000);
 
-  Serial.println("\n=================================");
-  Serial.println("  GC9A01 Round TFT Quick Test    ");
-  Serial.println("=================================");
+  pinMode(ONBOARD_LED, OUTPUT);
+  digitalWrite(ONBOARD_LED, HIGH); // ESP32 መስራቱን ለማሳየት LED ይበራል
 
-  // SPI ን በ 18 (SCK) እና 23 (MOSI) ማስጀመር
-  SPI.begin(18, 19, 23, -1);
+  Serial.println("\n==========================================");
+  Serial.println("  GC9A01 Round TFT Diagnostic (ESP32)     ");
+  Serial.println("==========================================");
+  Serial.println("[INFO] Pins: CS=15, DC=4, SCL=18, SDA=23, RST=14");
 
-  // CS ፒንን HIGH ማድረግ
+  Serial.println("[1] Resetting display pins...");
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
+  pinMode(TFT_DC, OUTPUT);
+  digitalWrite(TFT_DC, HIGH);
 
-  Serial.println("[1] Initializing TFT (default speed like Arduino Uno)...");
-  tft.begin(); // Arduino Uno ላይ ይሰራል ያልከው ልክ እንደዚህ ነው!
+  if (TFT_RST > 0) {
+    pinMode(TFT_RST, OUTPUT);
+    digitalWrite(TFT_RST, HIGH);
+    delay(50);
+    digitalWrite(TFT_RST, LOW);
+    delay(50);
+    digitalWrite(TFT_RST, HIGH);
+    delay(150);
+  }
 
-  Serial.println("[2] Resetting and setting rotation...");
+  Serial.println("[2] Initializing GC9A01 driver...");
+  tft.begin();
   tft.setRotation(0);
 
-  Serial.println("[3] Filling Screen RED...");
+  Serial.println("[3] Drawing Test Screens...");
+  
+  // RED
+  Serial.println(" -> SCREEN: RED");
   tft.fillScreen(GC9A01A_RED);
-  delay(1000);
+  delay(1200);
 
-  Serial.println("[4] Filling Screen GREEN...");
+  // GREEN
+  Serial.println(" -> SCREEN: GREEN");
   tft.fillScreen(GC9A01A_GREEN);
-  delay(1000);
+  delay(1200);
 
-  Serial.println("[5] Filling Screen BLUE...");
+  // BLUE
+  Serial.println(" -> SCREEN: BLUE");
   tft.fillScreen(GC9A01A_BLUE);
-  delay(1000);
+  delay(1200);
 
-  Serial.println("[6] Filling Screen BLACK and drawing text...");
+  // BLACK + UI
+  Serial.println(" -> SCREEN: BLACK + GRAPHICS");
   tft.fillScreen(GC9A01A_BLACK);
 
-  // ክብ መስመር (Outer Ring)
-  tft.drawCircle(120, 120, 115, GC9A01A_CYAN);
-  tft.drawCircle(120, 120, 110, GC9A01A_WHITE);
+  tft.drawCircle(120, 120, 116, GC9A01A_CYAN);
+  tft.drawCircle(120, 120, 112, GC9A01A_WHITE);
 
-  // ጽሑፍ
   tft.setTextColor(GC9A01A_CYAN);
   tft.setTextSize(2);
   tft.setCursor(45, 80);
@@ -72,15 +87,21 @@ void setup() {
 
   tft.setTextColor(GC9A01A_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(55, 160);
-  tft.println("TFT IS WORKING OK!");
+  tft.setCursor(48, 160);
+  tft.println("TFT IS WORKING 100%!");
 
-  Serial.println("[DONE] TFT test completed successfully!");
+  Serial.println("[DONE] Setup finished! Entering loop...");
 }
 
 void loop() {
-  tft.drawCircle(120, 120, 115, GC9A01A_CYAN);
+  // Onboard LED እና የክቡን ቀለም ማብራት ማጥፋት
+  digitalWrite(ONBOARD_LED, HIGH);
+  tft.drawCircle(120, 120, 116, GC9A01A_CYAN);
   delay(500);
-  tft.drawCircle(120, 120, 115, GC9A01A_BLUE);
+
+  digitalWrite(ONBOARD_LED, LOW);
+  tft.drawCircle(120, 120, 116, GC9A01A_BLUE);
   delay(500);
+
+  Serial.println("[HEARTBEAT] ESP32 is running and pulsing display...");
 }

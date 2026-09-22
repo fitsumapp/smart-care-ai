@@ -33,6 +33,8 @@
 #define TFT_CS 15  // Chip Select for TFT
 #define TFT_DC 4   // Data/Command for TFT
 #define TFT_RST 14  // Reset for TFT (GPIO 14 is clean and reliable)
+#define TFT_MOSI 23 // SDA (MOSI)
+#define TFT_SCLK 18 // SCL (Clock)
 
 // Hardware SPI Pins (VSPI default on ESP32):
 // SCK  = GPIO 18 (Shared between TFT and NFC)
@@ -53,7 +55,7 @@
 // ── Hardware Instances ─────────────────────────────────────────
 HardwareSerial loraSerial(2);  // Serial2
 MFRC522 rfid(NFC_SS_PIN, NFC_RST_PIN);
-Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 Preferences prefs;
 WebServer webServer(80);
 DNSServer dnsServer;
@@ -61,7 +63,7 @@ DNSServer dnsServer;
 // ── Configuration State ────────────────────────────────────────
 String wifiSSID = "";
 String wifiPassword = "";
-String serverUrl = "https://your-hospital-domain.com";
+String serverUrl = "https://smartcare.acrmatech.com";
 String stationId = "Nurse Station 1";
 const String STATION_KEY = "medpulse-station-secret-key";
 

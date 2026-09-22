@@ -24,12 +24,12 @@
 // 2. Round TFT (GC9A01A) Pins
 #define TFT_CS       15   // TFT Chip Select -> ESP32 GPIO 15
 #define TFT_DC       4    // TFT Data/Command -> ESP32 GPIO 4
-#define TFT_RST      14   // TFT Reset -> ESP32 GPIO 14 (ከ GPIO 2 ይልቅ 14 ንጹህ ነው!)
+#define TFT_RST      14   // TFT Reset -> ESP32 GPIO 14
+#define TFT_MOSI     23   // SDA (MOSI) -> ESP32 GPIO 23
+#define TFT_SCLK     18   // SCL (Clock) -> ESP32 GPIO 18
 
-// 3. Hardware SPI (VSPI በ ESP32 ነባሪ ፒኖች):
-// SCL (Clock) -> ESP32 GPIO 18 (ለ TFT እና ለ NFC የጋራ)
-// SDA (MOSI)  -> ESP32 GPIO 23 (ለ TFT እና ለ NFC የጋራ)
-// MISO        -> ESP32 GPIO 19 (ለ NFC ብቻ)
+// 3. Hardware SPI (ለ NFC MISO ብቻ):
+#define NFC_MISO_PIN 19   // MISO -> ESP32 GPIO 19 (ለ NFC ብቻ)
 
 // ── Station config ─────────────────────────────────────────────
 const char* STATION_ID = "STA-01";
@@ -37,7 +37,7 @@ const char* DEPT_TAG   = "HEMATOLOGY";
 
 // ── Hardware Instances ─────────────────────────────────────────
 MFRC522           rfid(NFC_SS_PIN, NFC_RST_PIN);
-Adafruit_GC9A01A  tft(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_GC9A01A  tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 // ── Display constants ──────────────────────────────────────────
 #define W    240

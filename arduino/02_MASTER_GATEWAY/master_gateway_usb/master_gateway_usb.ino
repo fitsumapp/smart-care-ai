@@ -26,7 +26,9 @@
 // Round TFT (GC9A01A) Pins
 #define TFT_CS       15   // Chip Select for TFT
 #define TFT_DC       4    // Data/Command for TFT
-#define TFT_RST      2    // Reset for TFT
+#define TFT_RST      14   // Reset for TFT (GPIO 14)
+#define TFT_MOSI     23   // SDA (MOSI)
+#define TFT_SCLK     18   // SCL (Clock)
 
 // Hardware SPI Pins (VSPI default on ESP32):
 // SCK  = GPIO 18 (Shared between TFT and NFC)
@@ -46,7 +48,7 @@
 // ── Hardware Instances ─────────────────────────────────────────
 HardwareSerial   loraSerial(2); // Serial2
 MFRC522          rfid(NFC_SS_PIN, NFC_RST_PIN);
-Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 const char STATION_ID[] = "STA-01 (MASTER)";
 
