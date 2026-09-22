@@ -1093,6 +1093,14 @@
 
         /* ── renderUI ────────────────────────────────────────── */
         function renderUI() {
+            // Clean dynamic cards that are no longer active
+            document.querySelectorAll('.dynamic-room-card').forEach(c => {
+                const rNum = c.dataset.room;
+                if (!activeCalls.some(ac => String(ac.room) === String(rNum))) {
+                    c.remove();
+                }
+            });
+
             document.querySelectorAll('.room-card').forEach(card => {
                 card.classList.remove('emergency-critical', 'emergency-urgent', 'emergency-normal', 'emergency-ai-fall', 'emergency-ai-tremor', 'acknowledged');
                 const bl = card.querySelector('.bed-list');
@@ -1104,8 +1112,30 @@
 
             const roomBeds = {};
             shown.forEach(call => {
-                const card = document.getElementById(`room-${slugify(call.room)}`);
-                if (!card) return;   // room not in this station's range
+                let card = document.getElementById(`room-${slugify(call.room)}`);
+                if (!card) {
+                    const grid = document.getElementById('grid');
+                    if (grid) {
+                        card = document.createElement('div');
+                        card.className = 'room-card dynamic-room-card p-1';
+                        card.id = `room-${slugify(call.room)}`;
+                        card.dataset.room = call.room;
+                        card.innerHTML = `
+                            <div class="card-top">
+                                <span class="card-label">Alert Room</span>
+                                <div class="room-num">${call.room}</div>
+                                <div class="bed-list" id="beds-${slugify(call.room)}"></div>
+                            </div>
+                            <div class="priority-controls">
+                                <button class="priority-btn active-critical" style="width:100%; border-radius:6px;" onclick="acknowledgeAICall('${call.room}')">
+                                    <span>Clear (${call.room})</span>
+                                </button>
+                            </div>
+                        `;
+                        grid.prepend(card);
+                    }
+                }
+                if (!card) return;
 
                 if (call.is_acknowledged) {
                     card.classList.add('acknowledged');

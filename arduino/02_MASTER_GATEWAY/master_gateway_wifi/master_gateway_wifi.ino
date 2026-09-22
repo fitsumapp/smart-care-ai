@@ -63,7 +63,7 @@ DNSServer dnsServer;
 // ── Configuration State ────────────────────────────────────────
 String wifiSSID = "";
 String wifiPassword = "";
-String serverUrl = "https://smartcare.acrmatech.com";
+String serverUrl = "https://smartcareai.acrmatech.com";
 String stationId = "Nurse Station 1";
 const String STATION_KEY = "medpulse-station-secret-key";
 
@@ -252,7 +252,16 @@ void loop() {
     lastHeartbeat = now;
   }
 
-  // 6. TFT Animation & Idle Screen Timeout
+  // 6. Built-in Hardware Test: Press BOOT button (GPIO 0) to simulate a Patient Call
+  static unsigned long lastBtnPress = 0;
+  if (digitalRead(0) == LOW && (now - lastBtnPress > 4000)) {
+    lastBtnPress = now;
+    Serial.println(F("[TEST TRIGGER] BOOT button pressed! Dispatching Test Call..."));
+    showCallScreen("1", "Bed 1");
+    sendCallToCloud("1", "Bed 1", "start");
+  }
+
+  // 7. TFT Animation & Idle Screen Timeout
   if (showingMessage && (now - messageTimer > 3500)) {
     showIdleScreen();
     showingMessage = false;
@@ -272,7 +281,7 @@ void loadConfiguration() {
   prefs.begin("smartcare", true);
   wifiSSID = prefs.getString("ssid", "");
   wifiPassword = prefs.getString("pass", "");
-  serverUrl = prefs.getString("server_url", "https://your-hospital-domain.com");
+  serverUrl = prefs.getString("server_url", "https://smartcareai.acrmatech.com");
   stationId = prefs.getString("station_id", "Nurse Station 1");
   prefs.end();
 }
