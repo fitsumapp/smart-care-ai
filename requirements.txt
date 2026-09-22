@@ -1,0 +1,66 @@
+# ============================================================
+# MedPulse Smart-Care AI — Python Dependencies
+# ፒአይ ላይ ለመጫን: pip install -r requirements.txt
+# ============================================================
+
+# --- Django Core & Modern Unfold UI ---
+Django==6.0.4
+django-unfold>=0.104.0
+asgiref==3.11.1
+sqlparse==0.5.5
+
+# --- REST & CORS ---
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+
+# --- Production Server ---
+gunicorn>=21.2.0
+
+# --- Static Files (Production) ---
+whitenoise==6.12.0
+
+# --- Database ---
+# SQLite ለ Development / Fallback (Python built-in)
+# MySQL ለ cPanel Shared Hosting
+PyMySQL>=1.1.0
+# PostgreSQL ለ VPS / Cloud
+psycopg2-binary>=2.9.9
+
+# --- Security & Encryption ---
+cryptography>=41.0.0
+
+# --- Environment Variables ---
+python-dotenv==1.2.2
+
+# --- Reports & Exports ---
+openpyxl==3.1.5
+reportlab==4.5.0
+et_xmlfile==2.0.0
+
+# --- SMS Escalation ---
+twilio==9.10.5
+PyJWT==2.12.1
+requests==2.33.1
+urllib3==2.6.3
+certifi==2026.4.22
+charset-normalizer==3.4.7
+idna==3.13
+
+# --- Hardware (Serial Bridge) ---
+pyserial==3.5
+
+# --- Images ---
+pillow==12.2.0
+
+# --- Async & Utils ---
+aiohttp==3.13.5
+aiohttp-retry==2.9.1
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+attrs==26.1.0
+frozenlist==1.8.0
+multidict==6.7.1
+propcache==0.4.1
+yarl==1.23.0
+typing_extensions==4.15.0
+tzdata==2026.2

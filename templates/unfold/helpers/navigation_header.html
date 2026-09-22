@@ -1,0 +1,29 @@
+{% load i18n unfold %}
+
+<div class="navigation_header flex items-center justify-between gap-2 px-3 py-3 w-full" style="border-bottom: 1px solid rgba(255, 255, 255, 0.14); margin-bottom: 6px;">
+    <a href="{% url 'admin:index' %}" class="flex items-center gap-3 no-underline group min-w-0" style="text-decoration: none;">
+        <!-- Medical / Smart Care AI Badge -->
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center shadow-md shrink-0 transition-transform duration-200 group-hover:scale-105" 
+             style="background: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);">
+            <span class="material-symbols-outlined" style="font-size: 22px; color: #0066cc; line-height: 1; font-variation-settings: 'FILL' 1;">health_and_safety</span>
+        </div>
+        
+        <!-- Typography: Smart Care AI -->
+        <div class="flex flex-col min-w-0 leading-tight select-none">
+            <div class="flex items-center gap-1.5 flex-nowrap">
+                <span style="color: #ffffff; font-size: 16px; font-weight: 800; letter-spacing: -0.02em; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; white-space: nowrap;">Smart Care</span>
+                <span style="background: rgba(255, 255, 255, 0.22); color: #ffffff; padding: 1.5px 5.5px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; border: 1px solid rgba(255, 255, 255, 0.4); text-transform: uppercase;">AI</span>
+            </div>
+            <span style="color: #bae6fd; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; opacity: 0.92; white-space: nowrap;">
+                Hospital System
+            </span>
+        </div>
+    </a>
+
+    <!-- Mobile Close Toggle -->
+    <span class="material-symbols-outlined cursor-pointer text-white/70 hover:text-white xl:hidden shrink-0" 
+          style="font-size: 20px;" 
+          x-on:click="sidebarToggle()">
+        close
+    </span>
+</div>

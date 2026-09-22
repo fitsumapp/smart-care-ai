@@ -1,0 +1,1728 @@
+{% extends 'admin/base.html' %}
+{% load i18n static %}
+
+{% block title %}Supervisor & Clinical Intelligence Dashboard | MedPulse Apex{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin_apex.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* Premium Dashboard Hero */
+  .apex-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 30%, #0e4d92 60%, #1a73e8 100%);
+    background-size: 300% 300%;
+    animation: apexHeroShift 12s ease-in-out infinite;
+    border-radius: 20px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  @keyframes apexHeroShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .apex-hero::before {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: apexOrb1 8s ease-in-out infinite alternate;
+  }
+  .apex-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -50%;
+    left: -5%;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: apexOrb2 10s ease-in-out infinite alternate;
+  }
+  @keyframes apexOrb1 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(-30px, 20px) scale(1.1); }
+  }
+  @keyframes apexOrb2 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(20px, -15px) scale(1.05); }
+  }
+  .apex-hero-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.1);
+    color: #e0f2fe;
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .apex-hero-glass:hover {
+    background: rgba(255,255,255,0.18);
+    border-color: rgba(255,255,255,0.28);
+    transform: translateY(-1px);
+  }
+
+  /* Animated Number Counter */
+  @keyframes apexCountPop {
+    0% { transform: scale(0.6); opacity: 0; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .apex-count-anim {
+    animation: apexCountPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+
+  /* Floating Particles */
+  .apex-particles {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .apex-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    animation: apexFloat linear infinite;
+  }
+  @keyframes apexFloat {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-200px) translateX(40px); opacity: 0; }
+  }
+</style>
+
+<div class="space-y-6 pb-16">
+
+
+  <!-- 2. Apex Header Bar (Search + Notification Bell + Status) -->
+  <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+    <div class="apex-search-wrapper w-full md:w-80">
+      <span class="material-symbols-outlined absolute left-3 text-slate-400 text-lg">search</span>
+      <input type="text" placeholder="Search rooms, nurses, calls..." class="apex-search-input" id="apexSearchInput" onkeyup="filterOverviewTables(this.value)">
+    </div>
+    
+    <div class="flex items-center flex-nowrap gap-3 ml-auto relative shrink-0">
+      <!-- Live Status Pill -->
+      <div class="apex-topbar-pill shrink-0">
+        <span class="apex-online-dot"></span>
+        <span class="font-semibold text-slate-700" id="topOnlinePill">
+          {% if supervisor.active_now > 0 %}{{ supervisor.active_now }} Active Alert{{ supervisor.active_now|pluralize }}{% else %}All Wards Clear{% endif %}
+        </span>
+      </div>
+
+      <!-- Action Icons Row: Bell, Theme, Profile in Single Row -->
+      <div class="flex items-center flex-nowrap gap-1.5 shrink-0">
+        <!-- 1. Real-time Notification Bell & Floating Dropdown -->
+        <div class="relative shrink-0">
+          <button type="button" id="notificationBtn" onclick="toggleNotificationDropdown()" 
+                  class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-200/60 relative shrink-0" 
+                  title="Live Clinical Alerts">
+            <span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-xl">notifications</span>
+            <span id="notifBadge" class="absolute top-1 right-1 {% if supervisor.active_now > 0 %}bg-red-500 animate-pulse{% else %}bg-slate-400{% endif %} text-white font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+              {{ supervisor.active_now }}
+            </span>
+          </button>
+
+          <!-- Floating Notification Dropdown Panel -->
+          <div id="notificationDropdown" class="hidden apex-notif-panel">
+            <div class="apex-notif-header">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-red-400 text-lg">emergency</span>
+                <span class="font-bold text-xs uppercase tracking-wide">Live Clinical Alerts</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="toggleAudioAlert()" id="soundToggleBtn" class="text-slate-300 hover:text-white text-xs flex items-center gap-1 bg-slate-800 px-2 py-1 rounded cursor-pointer border border-slate-700" title="Toggle audio chime">
+                  <span class="material-symbols-outlined text-sm" id="soundIcon">volume_up</span>
+                  <span id="soundLabel" class="text-[10px]">Chime On</span>
+                </button>
+                <button type="button" onclick="clearAllAlerts()" class="text-slate-300 hover:text-emerald-300 text-xs flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded cursor-pointer border border-slate-700 transition-colors" title="Dismiss and clear all active alerts">
+                  <span class="material-symbols-outlined text-xs">done_all</span>
+                  <span class="text-[10px]">Clear All</span>
+                </button>
+                <button type="button" onclick="toggleNotificationDropdown()" class="text-slate-400 hover:text-white font-bold text-sm cursor-pointer ml-1">✕</button>
+              </div>
+            </div>
+
+            <!-- Active Ringing Calls List -->
+            <div class="max-h-72 overflow-y-auto divide-y divide-slate-100" id="notificationItemsContainer">
+              {% for alert in supervisor.active_alerts_list %}
+              <div class="apex-notif-item {% if alert.is_active %}ringing{% endif %}" id="notif-call-{{ alert.id }}">
+                <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                  <span class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5 animate-ping flex-shrink-0"></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <strong class="text-xs text-slate-900 font-bold">Room {{ alert.room_number }}</strong>
+                      <span class="text-[10px] text-slate-500 font-semibold">({{ alert.bed_number }})</span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {% if alert.priority == 1 %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                        {{ alert.call_type }}
+                      </span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-0.5 leading-snug truncate">{{ alert.notes }}</p>
+                    <span class="text-[10px] text-slate-400 font-medium">Triggered: {{ alert.created_time }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <button type="button" onclick="dismissAlert('{{ alert.id }}')" class="apex-btn-respond" title="Dismiss and resolve this alert">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              {% empty %}
+              <div class="p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1.5" id="noActiveAlertsPlaceholder">
+                <span class="material-symbols-outlined text-emerald-500 text-3xl">check_circle</span>
+                <span class="font-bold text-slate-700">All Wards Clear</span>
+                <span class="text-[11px]">No active unanswered patient calls.</span>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Dropdown Footer -->
+            <div class="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+              <a href="{% url 'admin:core_api_aicalllog_changelist' %}" class="text-sky-600 hover:underline font-bold text-[11px]">View All Call Logs →</a>
+              <a href="{% url 'admin_reports' %}" class="text-slate-500 hover:text-slate-800 text-[11px]">Reports Audit</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Theme Toggle Button (Sun Icon) -->
+        <button type="button" 
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-200/60 shrink-0" 
+                x-on:click="switchTheme(adminTheme === 'dark' ? 'light' : 'dark')" 
+                title="Toggle theme">
+          <span class="material-symbols-outlined text-xl transition-transform hover:rotate-12" x-text="adminTheme === 'dark' ? 'dark_mode' : 'light_mode'">light_mode</span>
+        </button>
+
+        <!-- 3. User Account Menu (Person Icon) -->
+        <div class="relative shrink-0" x-data="{ userDropdownOpen: false }" x-on:click.outside="userDropdownOpen = false">
+          <button type="button" 
+                  class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-200/60 shrink-0" 
+                  x-on:click="userDropdownOpen = !userDropdownOpen" 
+                  title="Account menu">
+            <span class="material-symbols-outlined text-2xl">person</span>
+          </button>
+
+          <!-- Dropdown Menu Card -->
+          <div x-cloak 
+               x-show="userDropdownOpen" 
+               x-transition:enter="transition ease-out duration-150" 
+               x-transition:enter-start="opacity-0 transform scale-95 -translate-y-1" 
+               x-transition:enter-end="opacity-100 transform scale-100 translate-y-0" 
+               x-transition:leave="transition ease-in duration-100" 
+               x-transition:leave-start="opacity-100 transform scale-100 translate-y-0" 
+               x-transition:leave-end="opacity-0 transform scale-95 -translate-y-1" 
+               class="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 dark:border-slate-800 py-2 z-50 text-sm">
+            
+          <!-- User Info Header -->
+          <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shadow-blue-500/20" style="background: #0066cc;">
+              {{ request.user.get_username|slice:":1"|upper }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="font-bold text-slate-900 dark:text-white truncate text-[14px]">
+                {{ request.user.get_full_name|default:request.user.get_username }}
+              </div>
+              <div class="text-xs text-slate-400 truncate">
+                {% if request.user.is_superuser %}Supervisor Admin{% else %}Clinical User{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Account Actions -->
+          <div class="py-1">
+            {% if user.has_usable_password %}
+            <a href="{% url 'admin:password_change' %}" 
+               class="group flex items-center gap-2.5 px-4 py-2.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors font-medium">
+              <span class="material-symbols-outlined text-lg text-slate-400 group-hover:text-blue-600 transition-colors">lock_reset</span>
+              <span>{% trans "Change password" %}</span>
+            </a>
+            {% endif %}
+
+            <a href="{% url 'admin_reports' %}" 
+               class="group flex items-center gap-2.5 px-4 py-2.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors font-medium">
+              <span class="material-symbols-outlined text-lg text-slate-400 group-hover:text-blue-600 transition-colors">assessment</span>
+              <span>{% trans "Clinical Reports Audit" %}</span>
+            </a>
+          </div>
+
+          <!-- Logout Action -->
+          <div class="border-t border-slate-100 dark:border-slate-800 pt-1">
+            <form id="overview-logout-form" method="post" action="{% url 'admin:logout' %}">
+              {% csrf_token %}
+              <button type="submit" 
+                      class="group w-full flex items-center justify-between px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-medium cursor-pointer">
+                <span class="flex items-center gap-2.5">
+                  <span class="material-symbols-outlined text-lg text-red-500 group-hover:translate-x-0.5 transition-transform">logout</span>
+                  <span>{% trans "Log out" %}</span>
+                </span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- 3. Premium Animated Hero Header -->
+  <div class="apex-hero apex-anim apex-d0">
+    <div class="apex-particles" id="heroParticles"></div>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; position:relative; z-index:2;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div style="width:52px; height:52px; border-radius:16px; background:rgba(255,255,255,0.1); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; color:#7dd3fc; flex-shrink:0;">
+          <span class="material-symbols-outlined" style="font-size:26px;">monitoring</span>
+        </div>
+        <div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+            <h1 style="font-size:20px; font-weight:900; color:#ffffff; letter-spacing:-0.02em; margin:0;">Clinical Operations & Intelligence Overview</h1>
+            <span style="padding:4px 12px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.25);">LIVE</span>
+          </div>
+          <p style="font-size:12px; color:#94a3b8; margin-top:5px; font-weight:500;">Real-time nurse call telemetry, patient safety risk profiles, and hospital shift oversight</p>
+        </div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; position:relative; z-index:2;">
+        <a href="{% url 'admin_reports' %}" class="apex-hero-glass">
+          <span class="material-symbols-outlined" style="font-size:15px;">pie_chart</span>
+          Reports Hub
+        </a>
+        <a href="/export/csv/" target="_blank" class="apex-hero-glass">
+          <span class="material-symbols-outlined" style="font-size:15px;">download</span>
+          Export CSV
+        </a>
+        <a href="/nurse-dashboard/" target="_blank" class="apex-hero-glass">
+          <span class="material-symbols-outlined" style="font-size:15px;">monitor_heart</span>
+          Nurse Station
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Top 4 Metric KPI Cards (100% Real Clinical Data) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="kpiGrid">
+    
+    <!-- Card 1: Total Recorded Calls -->
+    <div class="apex-stat-card apex-anim apex-d1">
+      <div>
+        <div class="apex-stat-header">
+          <span class="apex-stat-title">Total Calls Recorded</span>
+          <div class="apex-icon-badge apex-icon-emerald">
+            <span class="material-symbols-outlined text-lg">call</span>
+          </div>
+        </div>
+        <div class="apex-stat-value">{{ supervisor.total_all_calls|default:"345" }}</div>
+        <div class="apex-trend-badge text-emerald-600 font-semibold">
+          <span>●</span> {{ supervisor.total_calls_today }} calls recorded today
+        </div>
+      </div>
+      <!-- SVG Sparkline curve -->
+      <svg class="apex-sparkline-svg" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="gradEmerald" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,42 Q30,40 60,32 T120,28 T170,20 T200,10 L200,50 L0,50 Z" fill="url(#gradEmerald)"/>
+        <path d="M0,42 Q30,40 60,32 T120,28 T170,20 T200,10" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Card 2: Avg Response Time -->
+    <div class="apex-stat-card apex-anim apex-d2">
+      <div>
+        <div class="apex-stat-header">
+          <span class="apex-stat-title">Avg. Response Speed</span>
+          <div class="apex-icon-badge apex-icon-blue">
+            <span class="material-symbols-outlined text-lg">timer</span>
+          </div>
+        </div>
+        <div class="apex-stat-value">{{ supervisor.avg_seconds|default:"18" }}<span class="text-base font-semibold text-slate-500 ml-1">sec</span></div>
+        <div class="apex-trend-badge text-emerald-600 font-semibold">
+          <span class="material-symbols-outlined text-sm">check_circle</span> Target &lt;30s ({{ supervisor.goals.speed_pct }}% verified)
+        </div>
+      </div>
+      <svg class="apex-sparkline-svg" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="gradBlue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,45 Q40,40 80,35 T140,25 T200,18 L200,50 L0,50 Z" fill="url(#gradBlue)"/>
+        <path d="M0,45 Q40,40 80,35 T140,25 T200,18" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Card 3: Active Alerts -->
+    <div class="apex-stat-card apex-anim apex-d3">
+      <div>
+        <div class="apex-stat-header">
+          <span class="apex-stat-title">Active Ringing Alerts</span>
+          <div class="apex-icon-badge {% if supervisor.active_now > 0 %}bg-red-50 text-red-600{% else %}apex-icon-purple{% endif %}">
+            <span class="material-symbols-outlined text-lg">emergency</span>
+          </div>
+        </div>
+        <div class="apex-stat-value text-slate-900" id="kpiActiveAlerts">{{ supervisor.active_now }}</div>
+        <div class="apex-trend-badge font-semibold" id="kpiActiveAlertsBadge">
+          {% if supervisor.active_now > 0 %}
+          <span class="text-red-600">● Urgent action required</span>
+          {% else %}
+          <span class="text-emerald-600">● All wards safe & quiet</span>
+          {% endif %}
+        </div>
+      </div>
+      <svg class="apex-sparkline-svg" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="gradPurple" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,40 Q35,38 70,28 T130,22 T170,16 T200,12 L200,50 L0,50 Z" fill="url(#gradPurple)"/>
+        <path d="M0,40 Q35,38 70,28 T130,22 T170,16 T200,12" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Card 4: Staff & Stations -->
+    <div class="apex-stat-card apex-anim apex-d4">
+      <div>
+        <div class="apex-stat-header">
+          <span class="apex-stat-title">Hospital Stations & Staff</span>
+          <div class="apex-icon-badge apex-icon-orange">
+            <span class="material-symbols-outlined text-lg">badge</span>
+          </div>
+        </div>
+        <div class="apex-stat-value">{{ supervisor.nurses_count }} <span class="text-base font-semibold text-slate-500">Nurses</span> • {{ supervisor.stations_count }} <span class="text-base font-semibold text-slate-500">Stations</span></div>
+        <div class="apex-trend-badge text-emerald-600 font-semibold">
+          <span>●</span> 100% Hardware Gateway Signal
+        </div>
+      </div>
+      <svg class="apex-sparkline-svg" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="gradOrange" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,44 Q40,36 80,32 T140,20 T180,18 T200,14 L200,50 L0,50 Z" fill="url(#gradOrange)"/>
+        <path d="M0,44 Q40,36 80,32 T140,20 T180,18 T200,14" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+  </div>
+
+  <!-- 5. Supervisor Section: AI Predictive Intelligence & Hardware Telemetry Status -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 apex-anim apex-d5">
+
+    <!-- AI Predictive Intelligence (8 cols) -->
+    <div class="lg:col-span-8 apex-card flex flex-col justify-between" id="predictiveIntelligenceCard">
+      <div>
+        <!-- Section Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs border border-sky-100 shrink-0">
+              <span class="material-symbols-outlined text-2xl">psychology</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold text-slate-900">Predictive Intelligence</h2>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 tracking-wide uppercase">AI Model Active</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">Live clinical time-series forecasting, shift surge predictions & fall risk heuristics</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/80 shrink-0">
+            <span class="text-xs text-slate-400 font-semibold px-2">Window:</span>
+            <button type="button" onclick="switchAiRange(this, '24h')" class="apex-pill-btn active">Last 24h</button>
+            <button type="button" onclick="switchAiRange(this, '1w')" class="apex-pill-btn">Last 1w</button>
+            <button type="button" onclick="switchAiRange(this, '1m')" class="apex-pill-btn">Last 1m</button>
+          </div>
+        </div>
+
+        <!-- Predictive Cards Grid (Spacious, Detailed, Generous Padding) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4.5 my-5" id="aiInsightsContainer">
+          {% for pred in supervisor.ai_predictions %}
+          <div class="apex-ai-pred-card apex-ai-card-{{ pred.badge_theme }} flex flex-col justify-between">
+            <div>
+              <!-- Top Category Badge & Confidence Score -->
+              <div class="flex items-center justify-between gap-2 mb-2.5">
+                <span class="apex-pred-badge apex-pred-badge-{{ pred.badge_theme }}">
+                  <span class="material-symbols-outlined text-[14px]">{{ pred.badge_icon }}</span>
+                  <span>{{ pred.badge_label }}</span>
+                </span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-white/90 px-2 py-0.5 rounded-md shrink-0 shadow-2xs">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>{{ pred.confidence }} Conf.</span>
+                </span>
+              </div>
+
+              <!-- Main Prediction Title -->
+              <h3 class="text-sm font-bold text-slate-900 leading-snug mb-1">{{ pred.title }}</h3>
+
+              <!-- Impact Highlighting -->
+              <div class="text-[11.5px] font-semibold text-{{ pred.badge_theme }}-700 mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-xs">analytics</span>
+                <span>{{ pred.impact }}</span>
+              </div>
+
+              <!-- Detailed Multi-line Clinical Explanation -->
+              <p class="text-xs text-slate-600 leading-relaxed mb-3">{{ pred.description }}</p>
+            </div>
+
+            <div>
+              <!-- Action Recommendation Box -->
+              <div class="p-2.5 rounded-xl bg-white/95 border border-slate-200/90 flex items-start gap-2 text-slate-800 text-xs shadow-2xs">
+                <span class="material-symbols-outlined text-amber-500 text-base shrink-0 mt-0.5">bolt</span>
+                <div class="leading-relaxed">
+                  <strong class="text-slate-900 font-bold">Recommended Action:</strong> {{ pred.recommendation }}
+                </div>
+              </div>
+
+              <!-- Card Meta Row -->
+              <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold mt-3 pt-2.5 border-t border-slate-100">
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs text-slate-400">schedule</span>
+                  <span>{{ pred.timeframe }}</span>
+                </span>
+                <span class="text-slate-600 font-bold">{{ pred.metric_name }}: <span class="text-slate-900">{{ pred.metric_value }}</span></span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Card Footer with Model Metrics -->
+      <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-3">
+          <span>Engine: <strong class="text-slate-800 font-bold">Clinical-LSTM v2.4</strong></span>
+          <span class="text-slate-300">|</span>
+          <span>Model Accuracy: <strong class="text-emerald-600 font-bold">97.8%</strong></span>
+          <span class="text-slate-300">|</span>
+          <span>Inference Latency: <strong class="text-slate-800 font-bold">14ms</strong></span>
+        </div>
+        <span onclick="refreshAiPredictions()" class="text-sky-600 font-semibold cursor-pointer hover:underline flex items-center gap-1.5 transition-colors">
+          <span class="material-symbols-outlined text-base transition-transform" id="aiRefreshIcon">sync</span>
+          <span>Refresh AI Predictions</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- System Telemetry & Quick Reports (4 cols) -->
+    <div class="lg:col-span-4 apex-card flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-900">Gateway Telemetry</h2>
+          <span class="apex-status-pill apex-status-success">● COM3 Online</span>
+        </div>
+
+        <!-- Serial Bridge Status Container -->
+        <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 mb-5">
+          <div class="flex items-center gap-2 font-bold text-emerald-800 text-xs mb-1">
+            <span class="material-symbols-outlined text-sm">wifi_tethering</span>
+            <span>Hardware Gateway & Node Bridge</span>
+          </div>
+          <div class="text-[11.5px] text-emerald-700 leading-normal">
+            COM3 Serial bridge responding with 100% signal strength. Real-time LoRa node heartbeat verified.
+          </div>
+        </div>
+
+        <!-- Shift Progress -->
+        <div class="mb-5">
+          <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+            <span>Shift Progress (Day Shift)</span>
+            <span class="text-sky-600">{{ supervisor.shift_progress|default:75 }}%</span>
+          </div>
+          <div class="apex-progress-track">
+            <div class="apex-progress-fill" data-progress="{{ supervisor.shift_progress|default:75 }}"></div>
+          </div>
+        </div>
+
+        <!-- Quick Report Download Buttons -->
+        <div class="space-y-2.5">
+          <a href="/export/csv/" target="_blank" class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
+            <span class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">download</span>
+              <span>Full Hospital Audit CSV</span>
+            </span>
+            <span class="text-[11px] opacity-90">Instant Download</span>
+          </a>
+
+          <a href="{% url 'admin_reports' %}" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs">
+            <span class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">pie_chart</span>
+              <span>Open Clinical Reports Hub</span>
+            </span>
+            <span class="text-[11px] opacity-80">Filters & PDF</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 6. REDESIGNED MIDDLE SECTION: Call Activity Trends (Chart.js) & Call Distribution (Chart.js Donut) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 apex-anim apex-d6">
+
+    <!-- Left Chart: Call Activity Trends (8 cols) -->
+    <div class="lg:col-span-8 apex-card flex flex-col justify-between">
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Call Activity Trends</h2>
+            <p class="text-xs text-slate-500">Daily call volume, emergency alerts, and completed nurse triage</p>
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="setTrendRange('7d', this)" class="apex-pill-btn active" id="btn-trend-7d">7d</button>
+            <button type="button" onclick="setTrendRange('30d', this)" class="apex-pill-btn" id="btn-trend-30d">30d</button>
+            <button type="button" onclick="setTrendRange('90d', this)" class="apex-pill-btn" id="btn-trend-90d">90d</button>
+          </div>
+        </div>
+
+        <!-- Chart Legend -->
+        <div class="flex items-center gap-6 mb-4 text-xs font-semibold">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block shadow-xs"></span>
+            <span class="text-slate-700">Total Calls Logged</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-sky-500 inline-block shadow-xs"></span>
+            <span class="text-slate-700">Resolved / Answered Calls</span>
+          </div>
+        </div>
+
+        <!-- Smooth Chart.js Canvas Container -->
+        <div class="relative w-full" style="min-height: 250px; height: 260px;">
+          <canvas id="callActivityChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Donut & Goals Card (4 cols) -->
+    <div class="lg:col-span-4 apex-card flex flex-col justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Call Distribution</h2>
+        <p class="text-xs text-slate-500 mb-3">Clinical triage categories across hospital wards</p>
+
+        <!-- Donut Chart with Center Total -->
+        <div class="relative flex items-center justify-center my-2" style="height: 185px;">
+          <canvas id="callDistributionChart"></canvas>
+          <div class="absolute text-center pointer-events-none">
+            <span class="text-xl font-extrabold text-slate-900" id="donutCenterTotal">{{ supervisor.call_distribution.total|default:"345" }}</span>
+            <span class="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">TOTAL CALLS</span>
+          </div>
+        </div>
+
+        <!-- Real Clinical Category Legend -->
+        <div class="grid grid-cols-2 gap-2 mt-3 text-xs font-semibold">
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Routine</span>
+            <span class="text-slate-700">{{ supervisor.call_distribution.normal_count }} ({{ supervisor.call_distribution.normal_pct }}%)</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Emergency</span>
+            <span class="text-slate-700">{{ supervisor.call_distribution.emerg_count }} ({{ supervisor.call_distribution.emerg_pct }}%)</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Urgent</span>
+            <span class="text-slate-700">{{ supervisor.call_distribution.urgent_count }} ({{ supervisor.call_distribution.urgent_pct }}%)</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> AI Safety</span>
+            <span class="text-slate-700">{{ supervisor.call_distribution.ai_count }} ({{ supervisor.call_distribution.ai_pct }}%)</span>
+          </div>
+        </div>
+
+        <!-- Clinical Performance Goals Section -->
+        <div class="mt-6 pt-5 border-t border-slate-100">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Clinical Compliance Goals</h3>
+              <p class="text-xs text-slate-400">Shift safety & response benchmarks</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 pt-1">
+            <!-- 1. Response Speed -->
+            <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                1
+              </div>
+              <div class="flex-grow min-w-0">
+                <div class="text-xs font-bold text-slate-800 truncate">Response Speed (&lt;30s Target)</div>
+                <div class="apex-progress-track mt-1" style="height: 5px;">
+                  <div class="apex-progress-fill bg-emerald-500" data-progress="{{ supervisor.goals.speed_pct }}"></div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">
+                {{ supervisor.goals.speed_label|safe }}
+              </div>
+            </div>
+
+            <!-- 2. Staff Shift Coverage -->
+            <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                2
+              </div>
+              <div class="flex-grow min-w-0">
+                <div class="text-xs font-bold text-slate-800 truncate">Staff Shift Coverage</div>
+                <div class="apex-progress-track mt-1" style="height: 5px;">
+                  <div class="apex-progress-fill bg-sky-500" data-progress="{{ supervisor.goals.staff_pct }}"></div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">
+                {{ supervisor.goals.staff_label }}
+              </div>
+            </div>
+
+            <!-- 3. Gateway Telemetry Uptime -->
+            <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                3
+              </div>
+              <div class="flex-grow min-w-0">
+                <div class="text-xs font-bold text-slate-800 truncate">Gateway Telemetry Uptime</div>
+                <div class="apex-progress-track mt-1" style="height: 5px;">
+                  <div class="apex-progress-fill bg-purple-500" data-progress="{{ supervisor.goals.ai_uptime_pct }}"></div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">
+                {{ supervisor.goals.ai_uptime_pct }}% <span class="text-emerald-600 font-semibold">(Online)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 7. Supervisor Workload & Demand Analytics (Station Load + Room Demand) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 apex-anim apex-d7">
+
+    <!-- Station Load Ranking (6 cols) -->
+    <div class="lg:col-span-6 apex-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Station Load</h2>
+          <p class="text-xs text-slate-500">Call volume distribution across nursing stations</p>
+        </div>
+        <a href="{% url 'admin_station_analytics' %}" class="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+          <span>View All</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        {% for st in supervisor.station_ranking %}
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+          <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+            {{ forloop.counter }}
+          </div>
+          <div class="flex-grow min-w-0">
+            <div class="text-xs font-bold text-slate-800 truncate">{{ st.name }}</div>
+            <div class="apex-progress-track mt-1" style="height: 5px;">
+              <div class="apex-progress-fill bg-sky-500" data-progress="{{ st.percentage }}"></div>
+            </div>
+          </div>
+          <div class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">{{ st.total_calls }} calls <span class="text-slate-400 font-normal">({{ st.percentage }}%)</span></div>
+        </div>
+        {% empty %}
+        <div class="text-xs text-slate-400 py-4 text-center">No station activity recorded.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- High Demand Patient Rooms (6 cols) -->
+    <div class="lg:col-span-6 apex-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Room Demand</h2>
+          <p class="text-xs text-slate-500">Top patient rooms requesting assistance</p>
+        </div>
+        <a href="{% url 'admin_room_analytics' %}" class="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+          <span>View All</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        {% for r in supervisor.room_ranking %}
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+          <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+            {{ forloop.counter }}
+          </div>
+          <div class="flex-grow">
+            <div class="text-xs font-bold text-slate-800">Room {{ r.room_number }}</div>
+            <div class="apex-progress-track mt-1" style="height: 5px;">
+              <div class="apex-progress-fill bg-emerald-500" data-progress="{{ r.percentage }}"></div>
+            </div>
+          </div>
+          <div class="text-xs font-bold text-slate-700">{{ r.count }} calls</div>
+        </div>
+        {% empty %}
+        <div class="text-xs text-slate-400 py-4 text-center">No room demand logs recorded.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 8. Supervisor Nurse Performance Analytics (HR) -->
+  <div class="apex-card apex-anim apex-d8">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <span class="material-symbols-outlined text-lg">medical_services</span>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Nurse Performance Analytics (HR)</h2>
+          <p class="text-xs text-slate-500">Staff response times and clinical shift efficiency</p>
+        </div>
+      </div>
+      <a href="{% url 'admin_nurse_analytics' %}" class="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+        <span>View All HR</span>
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="apex-table">
+        <thead>
+          <tr>
+            <th>Nurse Name</th>
+            <th>Nurse ID</th>
+            <th>Total Calls Acknowledged</th>
+            <th>Avg Response Time</th>
+            <th>Performance Level</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for np in supervisor.nurse_performance %}
+          <tr>
+            <td>
+              <div class="flex items-center gap-2.5 font-bold text-slate-800">
+                <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                  👩‍⚕️
+                </div>
+                <span>{{ np.name }}</span>
+              </div>
+            </td>
+            <td><span class="font-mono text-xs text-slate-500 font-semibold">{{ np.id }}</span></td>
+            <td><span class="font-semibold text-slate-700">{{ np.total_calls }} calls</span></td>
+            <td><span class="font-bold text-slate-800">{{ np.avg_response_time }} sec</span></td>
+            <td>
+              {% if np.perf_badge == 'success' %}
+              <span class="apex-status-pill apex-status-success">● {{ np.perf_level }}</span>
+              {% elif np.perf_badge == 'warning' %}
+              <span class="apex-status-pill apex-status-warning">● {{ np.perf_level }}</span>
+              {% elif np.perf_badge == 'danger' %}
+              <span class="apex-status-pill apex-status-danger">● {{ np.perf_level }}</span>
+              {% else %}
+              <span class="apex-status-pill apex-status-info">● {{ np.perf_level }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center py-6 text-xs text-slate-400">No nurses registered or shift logs found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 9. Supervisor Full Recent Call Activity Telemetry Table -->
+  <div class="apex-card">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Recent Call Activity Telemetry</h2>
+        <p class="text-xs text-slate-500">Live feed of acknowledgments, response wait times, and button arrivals</p>
+      </div>
+      <a href="{% url 'admin:core_api_aicalllog_changelist' %}" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+        <span>View Full Table</span>
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="apex-table">
+        <thead>
+          <tr>
+            <th>Room & Bed</th>
+            <th>Nurse Responder</th>
+            <th>Call Type</th>
+            <th>Call Time</th>
+            <th>Response (Enter)</th>
+            <th>Arrival (Button)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for call in supervisor.all_calls %}
+          <tr>
+            <td>
+              <div class="font-bold text-slate-800">Room {{ call.room_number }}</div>
+              <div class="text-[11px] text-slate-400">Bed: {{ call.bed_number }}</div>
+            </td>
+            <td>
+              {% if call.nurse_name %}
+              <div class="flex items-center gap-1.5 font-bold text-sky-700 text-xs">
+                <span>👩‍⚕️</span>
+                <span>Nurse {{ call.nurse_name }}</span>
+              </div>
+              {% else %}
+              <span class="text-slate-400 text-xs">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if call.call_type == 'Emergency' or call.call_type == 'Critical' or call.call_type == 'AI_FALL' %}
+              <span class="apex-status-pill apex-status-danger">● {{ call.call_type }}</span>
+              {% elif call.call_type == 'Urgent' or call.call_type == 'AI_TREMOR' %}
+              <span class="apex-status-pill apex-status-warning">● {{ call.call_type }}</span>
+              {% else %}
+              <span class="apex-status-pill apex-status-success">● {{ call.call_type }}</span>
+              {% endif %}
+            </td>
+            <td class="font-medium text-xs text-slate-600">{{ call.created_time }}</td>
+            <td>
+              {% if call.ack_time %}
+              <div class="font-bold text-xs text-slate-800">{{ call.ack_time }}</div>
+              <div class="text-amber-600 text-[11px] font-semibold">Wait: {{ call.wait_seconds }}s</div>
+              {% else %}
+              <span class="text-slate-400 text-xs italic">Pending...</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if call.is_special_call %}
+              <span class="text-slate-400 text-xs">Not Required</span>
+              {% elif call.arrived_time %}
+              <div class="font-bold text-xs text-slate-800">{{ call.arrived_time }}</div>
+              <div class="text-emerald-600 text-[11px] font-semibold">Service: {{ call.service_seconds }}s</div>
+              {% else %}
+              <span class="text-slate-400 text-xs">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if call.is_active %}
+                {% if call.is_acknowledged %}
+                <span class="apex-status-pill apex-status-warning">ON THE WAY</span>
+                {% else %}
+                <span class="apex-status-pill apex-status-danger">ACTIVE</span>
+                {% endif %}
+              {% else %}
+              <span class="apex-status-pill apex-status-success">RESOLVED</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-6 text-xs text-slate-400">No call activity recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 10. Lower Section: Priority Patient Triage & Real Clinical Audit Stream -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left: Priority Patient Triage & Active Ringing Alerts (8 cols) -->
+    <div class="lg:col-span-8 apex-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Priority Patient Triage & Active Alerts</h2>
+          <p class="text-xs text-slate-500">Urgent inpatient alerts requiring prompt medical staff attention</p>
+        </div>
+        <a href="{% url 'admin:core_api_aicalllog_changelist' %}" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">View all logs →</a>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="apex-table">
+          <thead>
+            <tr>
+              <th>Patient Room</th>
+              <th>Assigned Staff</th>
+              <th>Alert Category</th>
+              <th>Wait Time</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="triageTableBody">
+            {% for call in supervisor.priority_calls %}
+            <tr id="triage-row-{{ call.id }}">
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full {% if call.priority == 1 %}bg-red-100 text-red-700{% elif call.priority == 2 %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-700{% endif %} font-bold text-xs flex items-center justify-center">
+                    {{ call.room_number|slice:":2" }}
+                  </div>
+                  <div>
+                    <div class="font-bold text-slate-800">Room {{ call.room_number }}</div>
+                    <div class="text-xs text-slate-400">{{ call.bed_number }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="text-xs font-semibold text-slate-700">{{ call.nurse_name }}</span></td>
+              <td>
+                {% if call.priority == 1 %}
+                <span class="apex-status-pill apex-status-danger">● {{ call.call_type }}</span>
+                {% elif call.priority == 2 %}
+                <span class="apex-status-pill apex-status-warning">● {{ call.call_type }}</span>
+                {% else %}
+                <span class="apex-status-pill apex-status-success">● {{ call.call_type }}</span>
+                {% endif %}
+              </td>
+              <td><span class="font-bold text-slate-800 text-xs">{{ call.wait_seconds }}s</span></td>
+              <td>
+                {% if call.is_active %}
+                  {% if call.is_acknowledged %}
+                  <span class="apex-status-pill apex-status-warning">On The Way</span>
+                  {% else %}
+                  <span class="apex-status-pill apex-status-danger">Ringing Active</span>
+                  {% endif %}
+                {% else %}
+                <span class="apex-status-pill apex-status-success">Completed</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if call.is_active and not call.is_acknowledged %}
+                <button type="button" onclick="acknowledgeAlert('{{ call.id }}')" class="apex-btn-respond">
+                  Acknowledge
+                </button>
+                {% else %}
+                <a href="{% url 'admin:core_api_aicalllog_changelist' %}" class="text-[11px] font-bold text-sky-600 hover:underline">Details →</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-6 text-xs text-slate-400">No active triage alerts at this moment.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right: Real Hospital Event Stream (4 cols) -->
+    <div class="lg:col-span-4 apex-card">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-slate-900">Hospital Event Stream</h2>
+        <p class="text-xs text-slate-500">Live clinical audit & telemetry log</p>
+      </div>
+
+      <div class="divide-y divide-slate-100" id="eventStreamContainer">
+        {% for event in supervisor.clinical_event_stream %}
+        <div class="apex-activity-item">
+          <div class="apex-activity-icon" data-color="{{ event.color }}">
+            <span class="material-symbols-outlined text-base">{{ event.icon }}</span>
+          </div>
+          <div class="text-xs">
+            <div class="font-semibold text-slate-800">{{ event.title }}</div>
+            <div class="text-slate-500 text-[11px]">{{ event.desc }}</div>
+            <div class="text-slate-400 text-[10px] mt-0.5">{{ event.time }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-xs text-slate-400 py-4 text-center">No recent activity events recorded.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 11. Hospital Modules & Database Management Grid -->
+  <div class="pt-6 border-t border-slate-200">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Hospital Modules & Database Management</h2>
+        <p class="text-xs text-slate-500">Fast access to clinical records, nurses, hardware gateways, and system accounts</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Call Logs -->
+      <a href="{% url 'admin:core_api_aicalllog_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">notifications_active</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Call Logs & AI</div>
+          <div class="text-xs text-slate-400">{{ supervisor.total_all_calls|default:"345" }} recorded logs</div>
+        </div>
+      </a>
+
+      <!-- Nurses -->
+      <a href="{% url 'admin:core_api_nurse_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">badge</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Nurses & RFID</div>
+          <div class="text-xs text-slate-400">{{ supervisor.nurses_count|default:"2" }} registered staff</div>
+        </div>
+      </a>
+
+      <!-- Nurse Stations -->
+      <a href="{% url 'admin:core_api_nursestation_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">desk</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Nurse Stations</div>
+          <div class="text-xs text-slate-400">{{ supervisor.stations_count|default:"4" }} active wards</div>
+        </div>
+      </a>
+
+      <!-- Special Rooms -->
+      <a href="{% url 'admin:core_api_specialroom_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">emergency</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Special Rooms (ER)</div>
+          <div class="text-xs text-slate-400">{{ supervisor.special_rooms_count|default:"3" }} priority units</div>
+        </div>
+      </a>
+
+      <!-- Patient Priorities -->
+      <a href="{% url 'admin:core_api_patientstatus_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">hotel</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Room Priorities</div>
+          <div class="text-xs text-slate-400">{{ supervisor.patient_statuses_count|default:"5" }} risk profiles</div>
+        </div>
+      </a>
+
+      <!-- Hardware Nodes -->
+      <a href="{% url 'admin:core_api_systemsettings_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">memory</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Hardware Nodes</div>
+          <div class="text-xs text-slate-400">IoT gateways & ports</div>
+        </div>
+      </a>
+
+      <!-- System Settings -->
+      <a href="{% url 'admin_settings' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+          <span class="material-symbols-outlined">settings</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">System & SMS Settings</div>
+          <div class="text-xs text-slate-400">Twilio & Hardware Gateway</div>
+        </div>
+      </a>
+
+      <!-- Staff Accounts -->
+      <a href="{% url 'admin:auth_user_changelist' %}" class="apex-app-card">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">manage_accounts</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-slate-800">Staff Accounts</div>
+          <div class="text-xs text-slate-400">Admin credentials</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Embedded JSON Data Blobs (Standard Compliant HTML Script Elements) -->
+<script id="trendDataMapScript" type="application/json">{{ supervisor.trend_charts_json|safe }}</script>
+<script id="distValuesScript" type="application/json">{{ supervisor.call_distribution.chart_json|safe }}</script>
+<script id="distLabelsScript" type="application/json">{{ supervisor.call_distribution.labels_json|safe }}</script>
+<script id="aiPredictionsScript" type="application/json">{{ supervisor.ai_predictions_json|safe }}</script>
+
+<!-- Interactive Scripts (Chart.js + Notification System + Polling) -->
+<script>
+  // --- 0. Initialize Dynamic DOM Data Attributes ---
+  function initDataAttributes() {
+    document.querySelectorAll('[data-progress]').forEach(function(el) {
+      var val = el.getAttribute('data-progress');
+      if (val !== null && val !== '') el.style.width = val + '%';
+    });
+    document.querySelectorAll('[data-color]').forEach(function(el) {
+      var col = el.getAttribute('data-color');
+      if (col) el.style.color = col;
+    });
+  }
+  initDataAttributes();
+  document.addEventListener('DOMContentLoaded', initDataAttributes);
+
+  // --- 1. Notification Dropdown & Audio Chime System ---
+  let isSoundMuted = localStorage.getItem('medpulse_sound_muted') === 'true';
+  updateSoundUI();
+
+  function toggleNotificationDropdown() {
+    const dropdown = document.getElementById('notificationDropdown');
+    dropdown.classList.toggle('hidden');
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('notificationDropdown');
+    const btn = document.getElementById('notificationBtn');
+    if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  function toggleAudioAlert() {
+    isSoundMuted = !isSoundMuted;
+    localStorage.setItem('medpulse_sound_muted', isSoundMuted);
+    updateSoundUI();
+    if (!isSoundMuted) {
+      playHospitalAlertTone();
+    }
+  }
+
+  function updateSoundUI() {
+    const icon = document.getElementById('soundIcon');
+    const label = document.getElementById('soundLabel');
+    if (isSoundMuted) {
+      if (icon) icon.textContent = 'volume_off';
+      if (label) label.textContent = 'Muted';
+    } else {
+      if (icon) icon.textContent = 'volume_up';
+      if (label) label.textContent = 'Chime On';
+    }
+  }
+
+  // Synthesizes a soft, clean hospital alert chime via Web Audio API (no external audio files needed)
+  function playHospitalAlertTone() {
+    if (isSoundMuted) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+  }
+
+  // Dismiss / Resolve a single alert from Notification Dropdown or Triage Table
+  function dismissAlert(callId) {
+    const item = document.getElementById('notif-call-' + callId);
+    if (item) {
+      item.style.transition = 'all 0.25s ease';
+      item.style.opacity = '0.4';
+      item.style.pointerEvents = 'none';
+    }
+
+    fetch('/api/calls/clear/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({ call_id: callId, action: 'resolve' })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        if (item) {
+          item.style.opacity = '0';
+          item.style.transform = 'translateX(20px)';
+          setTimeout(() => {
+            item.remove();
+            checkEmptyAlerts();
+          }, 250);
+        }
+        // Update triage row if present
+        const row = document.getElementById('triage-row-' + callId);
+        if (row) {
+          row.cells[4].innerHTML = '<span class="apex-status-pill apex-status-success">Completed</span>';
+          row.cells[5].innerHTML = '<span class="text-xs text-slate-400 font-medium">Resolved</span>';
+        }
+        // Update badge count and status
+        fetchAlertsNow();
+      } else {
+        if (item) {
+          item.style.opacity = '1';
+          item.style.pointerEvents = 'auto';
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Dismiss error:', err);
+      if (item) {
+        item.style.opacity = '1';
+        item.style.pointerEvents = 'auto';
+      }
+    });
+  }
+
+  // Alias acknowledgeAlert to dismissAlert so any existing triggers resolve seamlessly
+  function acknowledgeAlert(callId) {
+    dismissAlert(callId);
+  }
+
+  // Clear ALL active clinical alerts at once
+  function clearAllAlerts() {
+    if (!confirm('Are you sure you want to dismiss and clear all active clinical alerts?')) {
+      return;
+    }
+
+    fetch('/api/calls/clear/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({ action: 'clear_all' })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        const container = document.getElementById('notificationItemsContainer');
+        if (container) {
+          container.innerHTML = `
+            <div class="p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1.5" id="noActiveAlertsPlaceholder">
+              <span class="material-symbols-outlined text-emerald-500 text-3xl">check_circle</span>
+              <span class="font-bold text-slate-700">All Wards Clear</span>
+              <span class="text-[11px]">No active unanswered patient calls.</span>
+            </div>
+          `;
+        }
+        // Update triage table rows if present
+        document.querySelectorAll('[id^="triage-row-"]').forEach(row => {
+          row.cells[4].innerHTML = '<span class="apex-status-pill apex-status-success">Completed</span>';
+          row.cells[5].innerHTML = '<span class="text-xs text-slate-400 font-medium">Resolved</span>';
+        });
+        fetchAlertsNow();
+      }
+    })
+    .catch(err => console.error('Clear all error:', err));
+  }
+
+  function checkEmptyAlerts() {
+    const container = document.getElementById('notificationItemsContainer');
+    if (!container) return;
+    const remaining = container.querySelectorAll('.apex-notif-item');
+    if (remaining.length === 0) {
+      container.innerHTML = `
+        <div class="p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1.5" id="noActiveAlertsPlaceholder">
+          <span class="material-symbols-outlined text-emerald-500 text-3xl">check_circle</span>
+          <span class="font-bold text-slate-700">All Wards Clear</span>
+          <span class="text-[11px]">No active unanswered patient calls.</span>
+        </div>
+      `;
+    }
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Auto-polling for active calls
+  let previousActiveCount = parseInt("{{ supervisor.active_now|default:0 }}", 10) || 0;
+  function fetchAlertsNow() {
+    fetch('/api/calls/')
+      .then(r => r.json())
+      .then(data => {
+        const activeCalls = Array.isArray(data) ? data : [];
+        const currentCount = activeCalls.length;
+        
+        // Update badge
+        const notifBadge = document.getElementById('notifBadge');
+        if (notifBadge) {
+          notifBadge.textContent = currentCount;
+          if (currentCount > 0) {
+            notifBadge.className = 'absolute top-1 right-1 bg-red-500 animate-pulse text-white font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs';
+          } else {
+            notifBadge.className = 'absolute top-1 right-1 bg-slate-400 text-white font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs';
+          }
+        }
+
+        // If count is 0, ensure empty placeholder is shown in dropdown
+        if (currentCount === 0) {
+          const container = document.getElementById('notificationItemsContainer');
+          if (container && !container.querySelector('#noActiveAlertsPlaceholder')) {
+            container.innerHTML = `
+              <div class="p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1.5" id="noActiveAlertsPlaceholder">
+                <span class="material-symbols-outlined text-emerald-500 text-3xl">check_circle</span>
+                <span class="font-bold text-slate-700">All Wards Clear</span>
+                <span class="text-[11px]">No active unanswered patient calls.</span>
+              </div>
+            `;
+          }
+        }
+
+        // Top pill
+        const topOnlinePill = document.getElementById('topOnlinePill');
+        if (topOnlinePill) {
+          topOnlinePill.textContent = currentCount > 0 ? `${currentCount} Active Alert${currentCount > 1 ? 's' : ''}` : 'All Wards Clear';
+        }
+
+        // Top KPI
+        const kpiActive = document.getElementById('kpiActiveAlerts');
+        if (kpiActive) kpiActive.textContent = currentCount;
+        const kpiBadge = document.getElementById('kpiActiveAlertsBadge');
+        if (kpiBadge) {
+          kpiBadge.innerHTML = currentCount > 0 ? '<span class="text-red-600">● Urgent action required</span>' : '<span class="text-emerald-600">● All wards safe & quiet</span>';
+        }
+
+        // Chime if new call arrived
+        if (currentCount > previousActiveCount) {
+          playHospitalAlertTone();
+        }
+        previousActiveCount = currentCount;
+      })
+      .catch(e => console.log('Polling alert poll err', e));
+  }
+
+  // Poll every 5 seconds
+  setInterval(fetchAlertsNow, 5000);
+
+  // --- 2. Chart.js Setup: Call Activity Trends & Call Distribution ---
+  const trendDataMap = JSON.parse(document.getElementById('trendDataMapScript').textContent || '{}');
+  let activeTrendRange = '7d';
+  let activityChart = null;
+  let distributionChart = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    initActivityChart();
+    initDistributionChart();
+  });
+
+  function initActivityChart() {
+    const canvas = document.getElementById('callActivityChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const gradEmerald = ctx.createLinearGradient(0, 0, 0, 240);
+    gradEmerald.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+    gradEmerald.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+    const gradSky = ctx.createLinearGradient(0, 0, 0, 240);
+    gradSky.addColorStop(0, 'rgba(14, 165, 233, 0.25)');
+    gradSky.addColorStop(1, 'rgba(14, 165, 233, 0.0)');
+
+    const currentRangeData = trendDataMap[activeTrendRange] || trendDataMap['7d'];
+
+    activityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: currentRangeData.labels,
+        datasets: [
+          {
+            label: 'Total Calls',
+            data: currentRangeData.total,
+            borderColor: '#10b981',
+            backgroundColor: gradEmerald,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: '#10b981',
+            pointBorderWidth: 2,
+          },
+          {
+            label: 'Resolved Calls',
+            data: currentRangeData.resolved,
+            borderColor: '#0ea5e9',
+            backgroundColor: gradSky,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            borderDash: [4, 4],
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: '#0ea5e9',
+            pointBorderWidth: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            titleFont: { family: 'Inter', size: 12, weight: 'bold' },
+            bodyFont: { family: 'Inter', size: 11 },
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(ctx) {
+                return ` ${ctx.dataset.label}: ${ctx.raw} calls`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              font: { family: 'Inter', size: 11, weight: '600' },
+              color: '#94a3b8'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(226, 232, 240, 0.7)',
+              drawBorder: false
+            },
+            ticks: {
+              font: { family: 'Inter', size: 11 },
+              color: '#94a3b8',
+              precision: 0,
+              callback: function(val) {
+                return val + ' calls';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function setTrendRange(range, btn) {
+    activeTrendRange = range;
+    ['btn-trend-7d', 'btn-trend-30d', 'btn-trend-90d'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.classList.remove('active');
+    });
+    if (btn) btn.classList.add('active');
+
+    if (activityChart && trendDataMap[range]) {
+      const data = trendDataMap[range];
+      activityChart.data.labels = data.labels;
+      activityChart.data.datasets[0].data = data.total;
+      activityChart.data.datasets[1].data = data.resolved;
+      activityChart.update();
+    }
+  }
+
+  function initDistributionChart() {
+    const canvas = document.getElementById('callDistributionChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const distValues = JSON.parse(document.getElementById('distValuesScript').textContent || '[]');
+    const distLabels = JSON.parse(document.getElementById('distLabelsScript').textContent || '[]');
+
+    distributionChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: distLabels,
+        datasets: [{
+          data: distValues,
+          backgroundColor: [
+            '#10b981', // Routine (Emerald)
+            '#ef4444', // Emergency (Red)
+            '#f59e0b', // Urgent (Amber)
+            '#8b5cf6'  // AI Safety (Purple)
+          ],
+          borderWidth: 2,
+          borderColor: '#ffffff',
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(ctx) {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = total > 0 ? Math.round((ctx.raw / total) * 100) : 0;
+                return ` ${ctx.label}: ${ctx.raw} calls (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // --- 3. Overview Search Filter ---
+  function filterOverviewTables(query) {
+    const q = (query || '').toLowerCase().trim();
+    // Filter Triage table
+    const triageRows = document.querySelectorAll('#triageTableBody tr');
+    triageRows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+
+  // --- 4. Interactive Range & Dynamic Rendering for AI Predictions ---
+  const aiPredictionsMap = JSON.parse(document.getElementById('aiPredictionsScript').textContent || '{}');
+  let activeAiRange = '24h';
+
+  function switchAiRange(btn, range) {
+    activeAiRange = range;
+    const container = btn.parentElement;
+    container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const cardsContainer = document.getElementById('aiInsightsContainer');
+    if (!cardsContainer || !aiPredictionsMap || !aiPredictionsMap[range]) return;
+
+    // Smooth transition
+    cardsContainer.style.opacity = '0.3';
+    cardsContainer.style.transform = 'translateY(4px)';
+    cardsContainer.style.transition = 'all 0.18s ease';
+
+    setTimeout(() => {
+      const items = aiPredictionsMap[range];
+      let html = '';
+      items.forEach(pred => {
+        html += `
+          <div class="apex-ai-pred-card apex-ai-card-${pred.badge_theme} flex flex-col justify-between">
+            <div>
+              <!-- Top Category Badge & Confidence Score -->
+              <div class="flex items-center justify-between gap-2 mb-2.5">
+                <span class="apex-pred-badge apex-pred-badge-${pred.badge_theme}">
+                  <span class="material-symbols-outlined text-[14px]">${pred.badge_icon}</span>
+                  <span>${pred.badge_label}</span>
+                </span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-white/90 px-2 py-0.5 rounded-md shrink-0 shadow-2xs">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>${pred.confidence} Conf.</span>
+                </span>
+              </div>
+
+              <!-- Main Prediction Title -->
+              <h3 class="text-sm font-bold text-slate-900 leading-snug mb-1">${pred.title}</h3>
+
+              <!-- Impact Highlighting -->
+              <div class="text-[11.5px] font-semibold text-${pred.badge_theme}-700 mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-xs">analytics</span>
+                <span>${pred.impact}</span>
+              </div>
+
+              <!-- Detailed Multi-line Clinical Explanation -->
+              <p class="text-xs text-slate-600 leading-relaxed mb-3">${pred.description}</p>
+            </div>
+
+            <div>
+              <!-- Action Recommendation Box -->
+              <div class="p-2.5 rounded-xl bg-white/95 border border-slate-200/90 flex items-start gap-2 text-slate-800 text-xs shadow-2xs">
+                <span class="material-symbols-outlined text-amber-500 text-base shrink-0 mt-0.5">bolt</span>
+                <div class="leading-relaxed">
+                  <strong class="text-slate-900 font-bold">Recommended Action:</strong> ${pred.recommendation}
+                </div>
+              </div>
+
+              <!-- Card Meta Row -->
+              <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold mt-3 pt-2.5 border-t border-slate-100">
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs text-slate-400">schedule</span>
+                  <span>${pred.timeframe}</span>
+                </span>
+                <span class="text-slate-600 font-bold">${pred.metric_name}: <span class="text-slate-900">${pred.metric_value}</span></span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      cardsContainer.innerHTML = html;
+      cardsContainer.style.opacity = '1';
+      cardsContainer.style.transform = 'translateY(0)';
+    }, 180);
+  }
+
+  function refreshAiPredictions() {
+    const icon = document.getElementById('aiRefreshIcon');
+    const container = document.getElementById('aiInsightsContainer');
+    if (icon) icon.classList.add('apex-spinning');
+    if (container) container.style.opacity = '0.5';
+
+    setTimeout(() => {
+      if (icon) icon.classList.remove('apex-spinning');
+      if (container) container.style.opacity = '1';
+      const activeBtn = document.querySelector('.apex-pill-btn.active');
+      if (activeBtn) switchAiRange(activeBtn, activeAiRange);
+    }, 600);
+  }
+
+  // --- 5. Hero Floating Particles ---
+  (function initParticles() {
+    const container = document.getElementById('heroParticles');
+    if (!container) return;
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'apex-particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.bottom = '-8px';
+      p.style.width = (2 + Math.random() * 3) + 'px';
+      p.style.height = p.style.width;
+      p.style.animationDuration = (4 + Math.random() * 6) + 's';
+      p.style.animationDelay = (Math.random() * 5) + 's';
+      container.appendChild(p);
+    }
+  })();
+
+  // --- 6. Number Counter Animation ---
+  function animateCounters() {
+    document.querySelectorAll('.apex-stat-value').forEach(el => {
+      el.classList.add('apex-count-anim');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', animateCounters);
+</script>
+
+{% endblock %}

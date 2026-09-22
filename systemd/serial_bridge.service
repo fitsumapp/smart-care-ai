@@ -1,0 +1,19 @@
+[Unit]
+Description=MedPulse Smart-Care AI — Serial Bridge (Hardware)
+After=network.target medpulse.service
+
+[Service]
+User=pi
+Group=dialout
+WorkingDirectory=/home/pi/ai_nurse_system
+EnvironmentFile=/home/pi/ai_nurse_system/.env
+ExecStart=/home/pi/ai_nurse_system/venv/bin/python serial_bridge.py
+
+Restart=always
+RestartSec=10
+
+StandardOutput=append:/home/pi/ai_nurse_system/logs/serial_bridge.log
+StandardError=append:/home/pi/ai_nurse_system/logs/serial_bridge_error.log
+
+[Install]
+WantedBy=multi-user.target

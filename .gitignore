@@ -1,0 +1,43 @@
+# ============================================================
+# MedPulse Smart-Care AI — Git Ignore
+# ============================================================
+
+# Environment & Secrets — ምስጢሮች
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Brain & Scratch
+brain/
+scratch/
+db.sqlite3
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+venv_win/
+venv/
+.venv/
+env/
+
+# Collected Static Files
+staticfiles/
+
+# Django
+*.log
+local_settings.py
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp

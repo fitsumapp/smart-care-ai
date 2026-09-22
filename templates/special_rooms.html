@@ -1,0 +1,84 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4><i class="fas fa-plus-circle"></i> Register Special Emergency Room (ER/OR/Special)</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Room/Bed Name</label>
+                        <input type="text" name="room_name" class="form-control" placeholder="e.g. ER BED 1" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Room Type</label>
+                        <select name="room_type" class="form-select">
+                            <option value="ER">Emergency Room</option>
+                            <option value="OR">Operating Room</option>
+                            <option value="REG">Regular Special Room</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-danger font-weight-bold">Stations called by Emergency Button</label>
+                        <select name="emergency_stations" class="form-control" style="height: 150px;" multiple required>
+                            {% for station in all_stations %}
+                                <option value="{{ station.id }}">{{ station.station_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Hold Ctrl to select multiple</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-primary font-weight-bold">Stations called by Regular Button</label>
+                        <select name="regular_stations" class="form-control" style="height: 150px;" multiple required>
+                            {% for station in all_stations %}
+                                <option value="{{ station.id }}">{{ station.station_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100">Register Room</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4 shadow">
+        <div class="card-header bg-secondary text-white"><h5>Registered Special Rooms</h5></div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Room</th>
+                        <th>Type</th>
+                        <th>Emergency Stations</th>
+                        <th>Regular Stations</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in special_rooms %}
+                    <tr>
+                        <td><strong>{{ room.name }}</strong></td>
+                        <td>{{ room.get_room_type_display }}</td>
+                        <td>
+                            {% for st in room.emergency_stations.all %}
+                                <span class="badge bg-danger">{{ st.station_name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for st in room.regular_stations.all %}
+                                <span class="badge bg-primary">{{ st.station_name }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

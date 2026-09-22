@@ -1,0 +1,108 @@
+{% extends 'admin/base.html' %}
+{% load i18n static %}
+
+{% block title %}Supervisor & Gateway Settings | Apex MedPulse Admin{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin_apex.css' %}">
+
+<div class="space-y-6 pb-12 max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center gap-2">
+    <span class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+      <span class="material-symbols-outlined text-lg">tune</span>
+    </span>
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Supervisor & System Settings</h1>
+      <p class="text-xs text-slate-500 mt-0.5">Manage SMS escalation, hardware alerts, and account security</p>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="space-y-2">
+    {% for message in messages %}
+    <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+      <span class="material-symbols-outlined text-base">check_circle</span>
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Settings Form -->
+  <form method="POST" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- SMS Escalation Card -->
+    <div class="apex-card">
+      <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+        <span class="material-symbols-outlined text-sky-600 text-xl">sms</span>
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">Twilio SMS Escalation Gateway</h2>
+          <p class="text-xs text-slate-400">Sends SMS alerts if nurses don't acknowledge calls within timeout</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Twilio Account SID:</label>
+          <input type="text" name="twilio_sid" value="{{ config.twilio_sid|default:'' }}" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Twilio Auth Token:</label>
+          <input type="password" name="twilio_auth_token" value="{{ config.twilio_auth_token|default:'' }}" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Twilio Phone Number (From):</label>
+          <input type="text" name="twilio_from_number" value="{{ config.twilio_from_number|default:'' }}" placeholder="+1234567890" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Doctor / Supervisor Alert Number (To):</label>
+          <input type="text" name="notification_phone_number" value="{{ config.notification_phone_number|default:'' }}" placeholder="+251911000000" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-slate-700 mb-1">Escalation Delay (Seconds):</label>
+          <input type="number" name="escalation_delay_seconds" value="{{ config.escalation_delay_seconds|default:30 }}" min="5" max="300" class="w-full sm:w-64 px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none font-bold text-slate-800">
+          <p class="text-[11px] text-slate-400 mt-1">If unacknowledged after these seconds, SMS will automatically be dispatched.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supervisor Account Card -->
+    <div class="apex-card">
+      <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+        <span class="material-symbols-outlined text-purple-600 text-xl">manage_accounts</span>
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">Supervisor Security & Password</h2>
+          <p class="text-xs text-slate-400">Leave blank if you do not wish to change the password</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">New Password:</label>
+          <input type="password" name="new_password" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Confirm Password:</label>
+          <input type="password" name="confirm_password" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="flex justify-end">
+      <button type="submit" class="px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition-colors">
+        Save Settings & Apply
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

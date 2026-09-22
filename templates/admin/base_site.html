@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('MedPulseAI') }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="{% static 'css/admin_apex.css' %}">
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('sidebarWidth') !== '235') {
+                    localStorage.setItem('sidebarWidth', '235');
+                }
+                localStorage.setItem('sidebarOpen', '1');
+            } catch(e) {}
+
+            // Prevent Unfold from hiding sidebar on laptop screen resolutions
+            if (typeof window.theme === 'function') {
+                const _origTheme = window.theme;
+                window.theme = function(defaultTheme) {
+                    const state = _origTheme(defaultTheme);
+                    state.sidebarOpen = function() {
+                        if (window.innerWidth <= 640) {
+                            return false;
+                        }
+                        const val = localStorage.getItem('sidebarOpen');
+                        return val !== '0';
+                    };
+                    if (state.themeBindings && state.themeBindings['x-resize.window']) {
+                        state.themeBindings['x-resize.window'] = function() {
+                            if (window.innerWidth <= 640) {
+                                this.sidebarOpen = false;
+                            } else {
+                                this.sidebarOpen = localStorage.getItem('sidebarOpen') !== '0';
+                            }
+                        };
+                    }
+                    return state;
+                };
+            }
+        })();
+    </script>
+{% endblock %}
+
+{% block branding %}
+<!-- Previous Option 3 Teal Badge (for rollback if needed):
+     Badge: style="background: #0D9488;" with text-white
+     AI text: style="color: #2DD4BF;"
+-->
+<div id="site-name" class="flex items-center gap-3 py-1 border-none">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xl shadow-md" style="background: #ffffff;">
+        <span class="material-symbols-outlined text-2xl" style="color: #0066cc;">medical_services</span>
+    </div>
+    <div class="flex items-center leading-tight">
+        <a href="{% url 'admin:index' %}" class="font-extrabold text-lg tracking-tight transition-colors flex items-center" style="color: #FFFFFF;">
+            <span>MedPulse</span><span style="color: #7dd3fc; font-weight: 800;">AI</span>
+        </a>
+    </div>
+</div>
+{% endblock %}

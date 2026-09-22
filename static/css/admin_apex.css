@@ -1,0 +1,1265 @@
+/* ==========================================================================
+   Apex Dashboard Theme for Django Admin (MedPulse Smart-Care AI)
+   Palette Exact Match to Supervisor Dashboard
+   ========================================================================== */
+
+/* --- Modern Font & Reset --- */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --apex-bg: #DBECF4;
+  --apex-sidebar-bg: #F5EFEB;
+  --apex-sidebar-hover: rgba(0, 102, 204, 0.08);
+  --apex-card-bg: #ffffff;
+  --apex-border: rgba(0, 0, 0, 0.06);
+  --apex-primary: #0066cc;
+  --apex-primary-soft: #e0f2fe;
+  --apex-blue: #0066cc;
+  --apex-blue-soft: #f0f9ff;
+  --apex-green: #22c55e;
+  --apex-purple: #6366f1;
+  --apex-orange: #f59e0b;
+  --apex-red: #ef4444;
+  --apex-text-main: #1e293b;
+  --apex-text-muted: #475569;
+  --apex-text-subtle: #64748b;
+}
+
+/* --- Balanced 90% Scale (One Step Up from 80% for Clear Legibility on All Sections) --- */
+html {
+  zoom: 90%;
+}
+
+@supports not (zoom: 90%) {
+  body {
+    transform: scale(0.90);
+    transform-origin: top left;
+    width: 111.11%;
+  }
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background-color: #DBECF4 !important;
+  color: #1e293b !important;
+  letter-spacing: -0.01em;
+}
+
+/* Ensure Sidebar is ALWAYS visible and positioned side-by-side on desktop/laptop */
+@media (min-width: 641px) {
+  div.fixed.xl\:relative,
+  div[class*="fixed"][class*="xl:relative"] {
+    position: relative !important;
+    display: block !important;
+  }
+}
+
+/* ==========================================================================
+   Borderless Sidebar with Exact Supervisor Palette (#F5EFEB & #0066cc)
+   Well-Balanced Width (235px) & Enhanced Legibility Font Sizes
+   ========================================================================== */
+
+/* ==========================================================================
+   Royal Hospital Blue Sidebar (#0066cc Trial)
+   Trial Theme: Crisp Clinical Royal Blue with White Active Pill
+   (Option 3 Medical Teal #0E3B43 preserved for instant rollback if requested)
+   ========================================================================== */
+
+/* Well-Balanced Sidebar Width Constraints (235px) */
+:root {
+  --apex-sidebar-width: 235px;
+  
+  /* Trial: Royal Hospital Blue */
+  --apex-sidebar-blue-bg: #0066cc;
+  --apex-sidebar-blue-active-bg: #ffffff;
+  --apex-sidebar-blue-active-text: #0066cc;
+  --apex-sidebar-blue-header: #bae6fd;
+  --apex-sidebar-blue-icon: #bae6fd;
+
+  /* Previous Option 3: Medical Teal Theme (Ready to rollback anytime):
+     --apex-sidebar-teal-bg: #0E3B43;
+     --apex-sidebar-teal-active: #0D9488;
+     --apex-sidebar-teal-mint: #2DD4BF;
+     --apex-sidebar-teal-header: #5EEAD4;
+  */
+}
+
+div.fixed.xl\:relative,
+div[class*="fixed"][class*="xl:relative"],
+div[class*="navigation_wrapper"],
+#nav-sidebar, 
+.bg-base-50[id*="sidebar"],
+nav[id*="nav-sidebar"],
+div[id="nav-sidebar"],
+div.relative.z-60 {
+  width: var(--apex-sidebar-width) !important;
+  max-width: var(--apex-sidebar-width) !important;
+  min-width: var(--apex-sidebar-width) !important;
+}
+
+/* Sidebar Column Outer Containers - Royal Hospital Blue */
+div.relative.z-60,
+div.fixed.xl\:relative,
+div[class*="fixed"][class*="xl:relative"],
+div[class*="navigation_wrapper"] {
+  height: 100% !important;
+  min-height: 100vh !important;
+  background-color: #0066cc !important;
+  background: #0066cc !important;
+}
+
+/* Sidebar Fixed Container - Anchored Top (0) to Bottom (0) with Royal Hospital Blue */
+#nav-sidebar,
+div[id="nav-sidebar"] {
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background-color: #0066cc !important;
+  background: #0066cc !important;
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: 4px 0 24px rgba(0, 102, 204, 0.22) !important;
+}
+
+/* Inner Nav Wrapper Flexbox - Full Height */
+#nav-sidebar-inner,
+nav[id="nav-sidebar-inner"],
+.navigation_inner {
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background-color: #0066cc !important;
+  background: #0066cc !important;
+  border: none !important;
+  width: 100% !important;
+}
+
+/* Top Branding in Sidebar - Fixed at Top */
+.navigation_header,
+#nav-sidebar-inner > div:first-child {
+  flex-shrink: 0 !important;
+  height: auto !important;
+  min-height: 52px !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: transparent !important;
+  padding: 12px 14px 10px 14px !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Middle Navigation Links - Smooth Independent Scroll Area */
+#nav-sidebar-apps {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: transparent !important;
+}
+
+/* Sidebar List Container Padding */
+#nav-sidebar ol {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+/* Completely Eliminate All Divider Lines & <hr> tags */
+#nav-sidebar hr,
+#nav-sidebar-inner hr,
+#nav-sidebar-apps hr,
+#nav-sidebar div.resize,
+#nav-sidebar .border-r,
+#nav-sidebar .border-l,
+#nav-sidebar .border-t,
+#nav-sidebar .border-b {
+  border: none !important;
+  border-color: transparent !important;
+}
+#nav-sidebar hr {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+}
+
+/* Resize Handle bar line hidden */
+#nav-sidebar .cursor-col-resize div {
+  background: transparent !important;
+}
+
+/* Navigation Group / Category Headers - Crisp Sky Blue (#BAE6FD) */
+#nav-sidebar h2,
+#nav-sidebar-apps h2,
+#nav-sidebar .text-subtle,
+#nav-sidebar span[class*="tracking-wider"],
+#nav-sidebar-inner div[class*="text-"] {
+  color: #bae6fd !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 16px 12px 6px 12px !important;
+  margin: 0 !important;
+  border: none !important;
+  opacity: 0.95 !important;
+}
+
+/* Navigation Links - Inactive State (Crisp Light White/Ice #F0F7FF) */
+#nav-sidebar a, 
+#nav-sidebar-inner a,
+#nav-sidebar-apps a {
+  color: #f0f7ff !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  border-radius: 12px !important;
+  padding: 8.5px 12px !important;
+  margin: 2px 0 !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  transition: all 0.18s ease-in-out !important;
+}
+
+#nav-sidebar a > span:not(.material-symbols-outlined),
+#nav-sidebar-inner a > span:not(.material-symbols-outlined),
+#nav-sidebar-apps a > span:not(.material-symbols-outlined) {
+  color: #f0f7ff !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Material Symbols Icon sizing inside links */
+#nav-sidebar a .material-symbols-outlined,
+#nav-sidebar-inner a .material-symbols-outlined,
+#nav-sidebar-apps a .material-symbols-outlined {
+  font-size: 21px !important;
+  width: 21px !important;
+  min-width: 21px !important;
+  line-height: 1 !important;
+  margin-right: 2px !important;
+  color: #bae6fd !important;
+  transition: all 0.18s ease-in-out !important;
+}
+
+/* Hover State - Translucent Glass Tint */
+#nav-sidebar a:hover, 
+#nav-sidebar-inner a:hover,
+#nav-sidebar-apps a:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+#nav-sidebar a:hover span, 
+#nav-sidebar-inner a:hover span,
+#nav-sidebar-apps a:hover span {
+  color: #ffffff !important;
+}
+
+#nav-sidebar a:hover .material-symbols-outlined, 
+#nav-sidebar-inner a:hover .material-symbols-outlined,
+#nav-sidebar-apps a:hover .material-symbols-outlined {
+  color: #ffffff !important;
+  transform: translateX(2px);
+}
+
+/* Active State - Pure White Pill with Royal Blue Text/Icon */
+#nav-sidebar a.current-app,
+#nav-sidebar a.active,
+#nav-sidebar a[aria-current="page"],
+#nav-sidebar a.bg-base-100 {
+  background: #ffffff !important;
+  color: #0066cc !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+  transform: none !important;
+}
+
+#nav-sidebar a.current-app > span,
+#nav-sidebar a.active > span,
+#nav-sidebar a[aria-current="page"] > span,
+#nav-sidebar a.bg-base-100 > span {
+  color: #0066cc !important;
+  font-weight: 700 !important;
+}
+
+#nav-sidebar a.current-app .material-symbols-outlined,
+#nav-sidebar a.active .material-symbols-outlined,
+#nav-sidebar a[aria-current="page"] .material-symbols-outlined,
+#nav-sidebar a.bg-base-100 .material-symbols-outlined {
+  color: #0066cc !important;
+  font-weight: 700 !important;
+}
+
+/* Logout Button */
+#nav-sidebar button[type="submit"],
+#nav-sidebar form[action*="logout"] button {
+  font-size: 15.5px !important;
+  font-weight: 600 !important;
+  padding: 8px 10px !important;
+  margin: 2px 0 !important;
+  border-radius: 12px !important;
+}
+#nav-sidebar form[action*="logout"] {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Sidebar Bottom User Profile - Hidden (Moved to Top Right Header) */
+#nav-sidebar .border-t.border-base-200.px-6.py-3,
+#nav-sidebar-inner > div.border-t,
+#nav-sidebar-inner > div[x-data*="openUserLinks"] {
+  display: none !important;
+}
+
+/* Top Right Header User Profile Dropdown & Theme Icon */
+div[class*="items-center.ml-auto"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* --- Header & Top Bar --- */
+header, 
+#header-inner,
+div[class*="header_inner"] {
+  background-color: #DBECF4 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
+}
+
+/* Top demo announcement banner */
+.apex-demo-banner {
+  background: #fffbeb;
+  border-bottom: 1px solid #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+}
+
+/* Top Bar Widgets */
+.apex-topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+}
+
+.apex-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  animation: apex-pulse 2s infinite;
+}
+
+@keyframes apex-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Apex Search Input */
+.apex-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+}
+
+.apex-search-input {
+  width: 100%;
+  padding: 8px 36px 8px 36px;
+  font-size: 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.apex-search-input:focus {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.apex-kbd-shortcut {
+  position: absolute;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* --- Apex Card Styling --- */
+.apex-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.apex-card:hover {
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.06);
+}
+
+/* Stat Cards */
+.apex-stat-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.apex-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.apex-stat-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.apex-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apex-icon-emerald { background: #ecfdf5; color: #10b981; }
+.apex-icon-blue    { background: #f0f9ff; color: #0ea5e9; }
+.apex-icon-purple  { background: #f5f3ff; color: #8b5cf6; }
+.apex-icon-orange  { background: #fffbeb; color: #f59e0b; }
+
+.apex-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+
+.apex-trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.apex-sparkline-svg {
+  width: 100%;
+  height: 48px;
+  margin-top: 10px;
+  overflow: visible;
+}
+
+/* Time range toggle pills (7d / 30d / 90d) */
+.apex-pill-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.apex-pill-btn.active, 
+.apex-pill-btn:hover {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+/* Donut & Progress bars */
+.apex-progress-track {
+  width: 100%;
+  height: 5px !important;
+  background: #f1f5f9 !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+}
+
+.apex-progress-fill {
+  height: 100% !important;
+  background: #10b981;
+  border-radius: 9999px !important;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.apex-progress-fill.bg-emerald-500,
+.apex-progress-fill.apex-fill-emerald {
+  background: #10b981 !important;
+}
+
+.apex-progress-fill.bg-sky-500,
+.apex-progress-fill.apex-fill-sky {
+  background: #0ea5e9 !important;
+}
+
+.apex-progress-fill.bg-purple-500,
+.apex-progress-fill.apex-fill-purple {
+  background: #8b5cf6 !important;
+}
+
+.apex-progress-fill.bg-amber-500,
+.apex-progress-fill.apex-fill-amber {
+  background: #f59e0b !important;
+}
+
+/* Tables */
+.apex-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.apex-table th {
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f6;
+  text-align: left;
+}
+
+.apex-table td {
+  padding: 14px;
+  font-size: 13.5px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.apex-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+.apex-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.apex-status-success { background: #ecfdf5; color: #059669; }
+.apex-status-danger  { background: #fef2f2; color: #dc2626; }
+.apex-status-warning { background: #fffbeb; color: #d97706; }
+.apex-status-info    { background: #eff6ff; color: #2563eb; }
+
+/* Timeline Activity */
+.apex-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.apex-activity-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: #f1f5f9;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+/* Quick App Cards */
+.apex-app-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.apex-app-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
+}
+
+/* Custom Action Buttons */
+.apex-btn-respond {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.apex-btn-respond:hover {
+  background-color: #047857 !important;
+  transform: translateY(-1px);
+}
+
+.apex-btn-respond:active {
+  transform: translateY(0);
+}
+
+/* Notification Dropdown Styling */
+.apex-notif-panel {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: #ffffff !important;
+  border-radius: 16px;
+  box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.25), 0 10px 15px -5px rgba(15, 23, 42, 0.15);
+  border: 1px solid #e2e8f0;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.apex-notif-header {
+  padding: 12px 16px;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.apex-notif-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  transition: background 0.15s ease;
+}
+
+.apex-notif-item:hover {
+  background: #f8fafc;
+}
+
+.apex-notif-item.ringing {
+  background: #fff5f5;
+}
+
+.apex-notif-item.ringing:hover {
+  background: #fee2e2;
+}
+
+/* ==========================================================================
+   Predictive Intelligence Cards & Badges (Spacious, Detailed Clinical Design)
+   ========================================================================== */
+.apex-ai-pred-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px !important;
+  padding: 18px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  margin-bottom: 2px !important;
+}
+
+/* Card Color Themes - Soft Subtle Pastel Medical Tints (Not Overly Bright) */
+.apex-ai-card-amber {
+  background: linear-gradient(150deg, #fffefb 0%, #fef8ee 100%) !important;
+  border: 1px solid #fde4c3 !important;
+}
+.apex-ai-card-amber:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 10px 24px -4px rgba(245, 158, 11, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.apex-ai-card-sky {
+  background: linear-gradient(150deg, #fbfdff 0%, #edf6fd 100%) !important;
+  border: 1px solid #d0e8f9 !important;
+}
+.apex-ai-card-sky:hover {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 10px 24px -4px rgba(14, 165, 233, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.apex-ai-card-rose {
+  background: linear-gradient(150deg, #fffcfc 0%, #fdeeee 100%) !important;
+  border: 1px solid #fecdd3 !important;
+}
+.apex-ai-card-rose:hover {
+  border-color: #f43f5e !important;
+  box-shadow: 0 10px 24px -4px rgba(244, 63, 94, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.apex-ai-card-emerald {
+  background: linear-gradient(150deg, #fbfeff 0%, #edf9f3 100%) !important;
+  border: 1px solid #c6f0db !important;
+}
+.apex-ai-card-emerald:hover {
+  border-color: #10b981 !important;
+  box-shadow: 0 10px 24px -4px rgba(16, 185, 129, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.apex-ai-card-indigo {
+  background: linear-gradient(150deg, #fbfbfe 0%, #f0f1fd 100%) !important;
+  border: 1px solid #d8dcfa !important;
+}
+.apex-ai-card-indigo:hover {
+  border-color: #6366f1 !important;
+  box-shadow: 0 10px 24px -4px rgba(99, 102, 241, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.apex-pred-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3.5px 9px !important;
+  border-radius: 9999px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1 !important;
+}
+
+.apex-pred-badge-amber {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+}
+
+.apex-pred-badge-sky {
+  background: #f0f9ff !important;
+  color: #0369a1 !important;
+  border: 1px solid #bae6fd !important;
+}
+
+.apex-pred-badge-rose {
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  border: 1px solid #fecdd3 !important;
+}
+
+.apex-pred-badge-emerald {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.apex-pred-badge-indigo {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border: 1px solid #c7d2fe !important;
+}
+
+@keyframes apex-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.apex-spinning {
+  animation: apex-spin 0.7s linear infinite !important;
+}
+
+/* ==========================================================================
+   Hospital System Diagnostics & Resolution Center
+   ========================================================================== */
+.apex-diag-card {
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 20px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+}
+
+.apex-diag-card:hover {
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08) !important;
+  transform: translateY(-2px);
+}
+
+.apex-badge-critical {
+  background: #fff1f2 !important;
+  color: #e11d48 !important;
+  border: 1px solid #fecdd3 !important;
+}
+
+.apex-badge-warning {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+}
+
+.apex-badge-operational {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.apex-badge-info {
+  background: #f0f9ff !important;
+  color: #0369a1 !important;
+  border: 1px solid #bae6fd !important;
+}
+
+.apex-sol-box {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-left: 4px solid #0066cc !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+}
+
+.apex-hw-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 4px 10px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+}
+
+/* Bulletproof Diagnostic Action Buttons (Guaranteed Contrast against Unfold CSS) */
+.apex-btn-action {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 8px 16px !important;
+  border-radius: 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+.apex-btn-action:hover {
+  transform: translateY(-1.5px) !important;
+}
+
+.apex-btn-action:active {
+  transform: translateY(0) !important;
+}
+
+.apex-btn-action-primary {
+  background: #0066cc !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 102, 204, 0.28) !important;
+}
+
+.apex-btn-action-primary:hover {
+  background: #0052a3 !important;
+  box-shadow: 0 6px 18px rgba(0, 102, 204, 0.38) !important;
+}
+
+.apex-btn-action-dark {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25) !important;
+}
+
+.apex-btn-action-dark:hover {
+  background: #000000 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+.apex-btn-action-red {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.28) !important;
+}
+
+.apex-btn-action-red:hover {
+  background: #be123c !important;
+}
+
+.apex-btn-action-emerald {
+  background: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28) !important;
+}
+
+.apex-btn-action-emerald:hover {
+  background: #047857 !important;
+}
+
+/* Executive Subsystem Health Cards */
+.apex-kpi-subsystem {
+  background: #ffffff !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  border-radius: 18px !important;
+  padding: 16px 18px !important;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  position: relative !important;
+}
+
+.apex-kpi-subsystem:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.08) !important;
+}
+
+.apex-kpi-subsystem.kpi-critical {
+  background: linear-gradient(160deg, #fffafa 0%, #ffffff 100%) !important;
+  border-color: #fecdd3 !important;
+}
+.apex-kpi-subsystem.kpi-critical:hover {
+  border-color: #f43f5e !important;
+  box-shadow: 0 10px 24px -4px rgba(244, 63, 94, 0.14) !important;
+}
+
+.apex-kpi-subsystem.kpi-warning {
+  background: linear-gradient(160deg, #fffdfa 0%, #ffffff 100%) !important;
+  border-color: #fde68a !important;
+}
+.apex-kpi-subsystem.kpi-warning:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 10px 24px -4px rgba(245, 158, 11, 0.14) !important;
+}
+
+.apex-kpi-subsystem.kpi-healthy {
+  background: linear-gradient(160deg, #fbfdfc 0%, #ffffff 100%) !important;
+  border-color: #e2e8f0 !important;
+}
+.apex-kpi-subsystem.kpi-healthy:hover {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 10px 24px -4px rgba(14, 165, 233, 0.12) !important;
+}
+
+/* ==========================================================================
+   PREMIUM DASHBOARD ANIMATION & VISUAL ENHANCEMENT SYSTEM
+   Staggered Entries, Micro-Interactions, Gradient Accents, Glassmorphism
+   ========================================================================== */
+
+/* --- Staggered Fade-Up Entry Animations --- */
+@keyframes apexFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes apexFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes apexScaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes apexSlideRight {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.apex-anim {
+  animation: apexFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  opacity: 0;
+}
+.apex-anim-scale {
+  animation: apexScaleIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  opacity: 0;
+}
+.apex-anim-slide {
+  animation: apexSlideRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  opacity: 0;
+}
+.apex-d0 { animation-delay: 0s !important; }
+.apex-d1 { animation-delay: 0.06s !important; }
+.apex-d2 { animation-delay: 0.12s !important; }
+.apex-d3 { animation-delay: 0.18s !important; }
+.apex-d4 { animation-delay: 0.24s !important; }
+.apex-d5 { animation-delay: 0.30s !important; }
+.apex-d6 { animation-delay: 0.36s !important; }
+.apex-d7 { animation-delay: 0.42s !important; }
+.apex-d8 { animation-delay: 0.48s !important; }
+
+/* --- Premium Stat Card Enhancements --- */
+.apex-stat-card {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.apex-stat-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.apex-stat-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 16px 40px -8px rgba(15, 23, 42, 0.1) !important;
+  border-color: rgba(14, 165, 233, 0.3) !important;
+}
+
+.apex-stat-card:hover::before {
+  opacity: 1 !important;
+}
+
+/* Different gradient accent lines per card position */
+.apex-stat-card:nth-child(1)::before {
+  background: linear-gradient(90deg, #10b981, #34d399) !important;
+}
+.apex-stat-card:nth-child(2)::before {
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8) !important;
+}
+.apex-stat-card:nth-child(3)::before {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa) !important;
+}
+.apex-stat-card:nth-child(4)::before {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24) !important;
+}
+
+/* Animated stat value (count-up feel) */
+.apex-stat-value {
+  transition: color 0.3s ease !important;
+}
+.apex-stat-card:hover .apex-stat-value {
+  color: #0066cc !important;
+}
+
+/* Sparkline animation on hover */
+.apex-sparkline-svg path {
+  transition: all 0.4s ease !important;
+}
+.apex-stat-card:hover .apex-sparkline-svg path[fill="none"] {
+  stroke-width: 3.5 !important;
+}
+
+/* Icon badge subtle bounce on card hover */
+@keyframes apexIconBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+.apex-stat-card:hover .apex-icon-badge {
+  animation: apexIconBounce 0.4s ease !important;
+}
+
+/* --- Enhanced Apex Card Hover --- */
+.apex-card {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.apex-card:hover {
+  box-shadow: 0 12px 32px -6px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* --- AI Prediction Card Enhancements --- */
+.apex-ai-pred-card {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.apex-ai-pred-card:hover {
+  transform: translateY(-3px) !important;
+}
+
+/* Subtle shimmer effect on AI cards */
+@keyframes apexShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* --- App Module Cards Enhancement --- */
+.apex-app-card {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.apex-app-card::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent) !important;
+  transition: left 0.5s ease !important;
+}
+
+.apex-app-card:hover::after {
+  left: 100% !important;
+}
+
+.apex-app-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 32px -6px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* --- Progress Bar Animated Fill --- */
+@keyframes apexProgressGrow {
+  from { width: 0%; }
+}
+.apex-progress-fill {
+  animation: apexProgressGrow 1s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* --- Table Row Hover Enhancement --- */
+.apex-table tbody tr {
+  transition: all 0.2s ease !important;
+}
+.apex-table tbody tr:hover td {
+  background-color: #f8fafc !important;
+}
+
+/* --- Activity Timeline Dot Pulse --- */
+.apex-activity-icon {
+  transition: all 0.2s ease !important;
+}
+.apex-activity-item:hover .apex-activity-icon {
+  transform: scale(1.1) !important;
+}
+
+/* --- Notification Badge Glow --- */
+@keyframes apexBadgeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+#notifBadge.bg-red-500 {
+  animation: apexBadgeGlow 2s ease-in-out infinite !important;
+}
+
+/* --- Smooth Donut Center Text --- */
+#donutCenterTotal {
+  transition: all 0.3s ease !important;
+}
+
+/* --- Pill Button Transitions --- */
+.apex-pill-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.apex-pill-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* --- Topbar Search Glow Effect --- */
+.apex-search-input:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 4px 16px -2px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* --- Respond Button Pulse --- */
+@keyframes apexRespondPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(5, 150, 105, 0); }
+}
+.apex-btn-respond {
+  animation: apexRespondPulse 2s ease-in-out infinite !important;
+}
+.apex-btn-respond:hover {
+  animation: none !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+}
+
+/* --- Goal Progress Bar Shimmer --- */
+.apex-progress-track {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* --- Scrollbar Styling for Dashboard --- */
+.apex-card::-webkit-scrollbar,
+.apex-notif-panel::-webkit-scrollbar {
+  width: 5px !important;
+}
+.apex-card::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.apex-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 3px !important;
+}
+

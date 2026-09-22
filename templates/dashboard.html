@@ -1,0 +1,247 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Nurse Station Dashboard</title>
+    <style>
+        :root {
+            --primary-blue: #004a99;
+            --light-blue: #f0f5ff;
+            --white: #ffffff;
+            --alert-red: #d32f2f;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--light-blue); 
+            margin: 0; 
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Header - Full Width */
+        .header { 
+            background: var(--primary-blue); 
+            color: var(--white); 
+            padding: 20px 40px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .header-title h1 { margin: 0; font-size: 24px; }
+        .header-title p { margin: 5px 0 0; opacity: 0.8; font-size: 16px; }
+
+        .btn { 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            font-weight: bold; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            color: var(--primary-blue);
+            background: var(--white);
+            transition: 0.3s;
+        }
+        .btn:hover { background: #e0e0e0; }
+
+        /* Container - Full Width */
+        .container { 
+            display: grid;
+            /* Responsive Grid based on screen width */
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .room-box {
+            height: 120px;
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center;
+            font-size: 24px; 
+            font-weight: 800; 
+            color: var(--primary-blue);
+            background-color: var(--white); 
+            border-radius: 12px; 
+            border: 3px solid #ced4da;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .room-label {
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            opacity: 0.6;
+        }
+
+        /* Alert state - red and blinking */
+        .blinking {
+            animation: alert-pulse 1s infinite alternate;
+            background-color: var(--alert-red) !important;
+            color: white !important;
+            border-color: #8b0000 !important;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(211, 47, 47, 0.4);
+        }
+
+        @keyframes alert-pulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+
+        .no-station {
+            grid-column: 1 / -1;
+            padding: 100px;
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+            margin: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <h1>AI Nurse Station: {{ station.station_name }}</h1>
+            <p>📍 Monitoring Range: <strong>{{ station.start_room }} - {{ station.end_room }}</strong></p>
+        </div>
+        {% if user.is_staff %}
+        <a href="{% url 'export_csv' %}" class="btn">Download Excel Report</a>
+        {% endif %}
+    </div>
+
+    <div class="container" id="dashboard-container">
+        {% if station %}
+            {% with ''|center:station.end_room as range %}
+                {% for _ in range %}
+                    {% with room_no=forloop.counter %}
+                        {% if room_no >= station.start_room and room_no <= station.end_room %}
+                            <div id="room-{{ room_no }}" class="room-box">
+                                <span class="room-label">ROOM</span>
+                                {{ room_no }}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                {% endfor %}
+            {% endwith %}
+        {% else %}
+            <div class="no-station">
+                <h2 style="color: var(--alert-red);">⚠️ No Station Assigned</h2>
+                <p>Please contact the system administrator to assign rooms to your account.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <audio id="alert-sound" src="{% static 'sounds/alert.mp3' %}" preload="auto"></audio>
+
+    <script>
+        const alertSound = document.getElementById('alert-sound');
+        let isSpeaking = false;
+        let lastActionTime = 0;
+        let currentPhase = 'alert'; 
+
+        async function updateDashboard() {
+            try {
+                const res = await fetch('/api/calls/');
+                const activeCalls = await res.json();
+
+                document.querySelectorAll('.room-box').forEach(box => {
+                    box.classList.remove('blinking');
+                    box.style.backgroundColor = 'var(--white)';
+                    box.style.color = 'var(--primary-blue)';
+                });
+
+                if (activeCalls.length > 0) {
+                    activeCalls.forEach(call => {
+                        const roomBox = document.getElementById(`room-${call.room_number}`);
+                        if (roomBox) roomBox.classList.add('blinking');
+                    });
+
+                    const currentTime = Date.now();
+                    if (!isSpeaking && (currentTime - lastActionTime > 2000)) {
+                        if (currentPhase === 'alert') {
+                            alertSound.play().catch(e => console.log("Click page to enable audio"));
+                            setTimeout(() => {
+                                alertSound.pause();
+                                alertSound.currentTime = 0;
+                                currentPhase = 'voice';
+                                lastActionTime = Date.now();
+                            }, 3000); 
+                        } else if (currentPhase === 'voice') {
+                            const roomNumbers = activeCalls.map(c => c.room_number).join(", ");
+                            speakCall(roomNumbers);
+                            currentPhase = 'alert';
+                            lastActionTime = Date.now();
+                        }
+                    }
+                } else {
+                    stopAllAudio();
+                }
+            } catch (err) {
+                console.error("Connection error:", err);
+            }
+        }
+
+        function speakCall(roomNumbers) {
+            const message = `Attention, Room ${roomNumbers} is calling.`;
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.lang = 'en-US';
+            utterance.onstart = () => { isSpeaking = true; };
+            utterance.onend = () => { isSpeaking = false; };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function stopAllAudio() {
+            alertSound.pause();
+            alertSound.currentTime = 0;
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            currentPhase = 'alert';
+        }
+
+        document.addEventListener('keydown', async (event) => {
+            if (event.key === 'Enter') {
+                stopAllAudio();
+                try {
+                    const res = await fetch('/api/calls/');
+                    const activeCalls = await res.json();
+                    for (let call of activeCalls) {
+                        await fetch('/api/calls/clear/', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ room_number: call.room_number })
+                        });
+                    }
+                    updateDashboard();
+                } catch (err) { console.error(err); }
+            }
+        });
+
+        setInterval(updateDashboard, 1500);
+        
+        document.body.addEventListener('click', () => {
+            console.log("Audio ready");
+        }, { once: true });
+    </script>
+    <footer class="footer mt-5 pb-4">
+        <div class="container-fluid text-center">
+            <p class="text-muted small mb-0">© 2026 <span class="fw-bold" style="color: var(--accent-blue);">ACRMA Tech Solution PLC</span>. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

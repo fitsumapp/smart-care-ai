@@ -1,0 +1,16 @@
+[Unit]
+Description=MedPulse AI Vision Patient Monitor Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ai_nurse_system/ai_vision
+ExecStart=/home/pi/ai_nurse_system/ai_vision/venv/bin/python /home/pi/ai_nurse_system/ai_vision/patient_monitor.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

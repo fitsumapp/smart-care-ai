@@ -1,0 +1,1160 @@
+{% extends 'admin/base.html' %}
+{% load i18n static %}
+
+{% block title %}System Diagnostics, Telemetry & Resolution Center | Apex MedPulse Admin{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin_apex.css' %}">
+
+<style>
+  /* ======== PREMIUM DIAGNOSTIC CENTER STYLES ======== */
+
+  /* Animated gradient hero header */
+  .diag-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0e4d92 70%, #1a73e8 100%);
+    background-size: 300% 300%;
+    animation: diagHeroShift 12s ease-in-out infinite;
+    border-radius: 20px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  @keyframes diagHeroShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .diag-hero::before {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -20%;
+    width: 460px;
+    height: 460px;
+    background: radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .diag-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    left: -10%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .diag-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #7dd3fc;
+    flex-shrink: 0;
+  }
+
+  .diag-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+  }
+  .diag-status-badge.status-ok {
+    background: rgba(16,185,129,0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16,185,129,0.25);
+  }
+  .diag-status-badge.status-warn {
+    background: rgba(245,158,11,0.15);
+    color: #fcd34d;
+    border: 1px solid rgba(245,158,11,0.25);
+  }
+  .diag-status-badge.status-critical {
+    background: rgba(239,68,68,0.18);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.25);
+    animation: critPulse 2s ease-in-out infinite;
+  }
+  @keyframes critPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    50% { box-shadow: 0 0 16px 4px rgba(239,68,68,0.2); }
+  }
+
+  .diag-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    white-space: nowrap;
+  }
+  .diag-hero-btn:hover { transform: translateY(-2px); }
+  .diag-hero-btn:active { transform: translateY(0); }
+  .diag-hero-btn-primary {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+  }
+  .diag-hero-btn-primary:hover {
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .diag-hero-btn-accent {
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  }
+  .diag-hero-btn-accent:hover {
+    background: #f1f5f9;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  }
+
+  /* ---- Subsystem Health Matrix Cards ---- */
+  .subsys-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 1024px) { .subsys-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px) { .subsys-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .subsys-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 18px 20px;
+    border: 1px solid rgba(226,232,240,0.85);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .subsys-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 18px 18px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .subsys-card:hover::before { opacity: 1; }
+  .subsys-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px -6px rgba(15,23,42,0.1);
+  }
+
+  .subsys-card.subsys-sky::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+  .subsys-card.subsys-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .subsys-card.subsys-rose::before { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+  .subsys-card.subsys-teal::before { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+  .subsys-card.subsys-indigo::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+  .subsys-card.subsys-critical {
+    background: linear-gradient(160deg, #fff5f5 0%, #ffffff 100%);
+    border-color: #fecdd3;
+  }
+  .subsys-card.subsys-critical::before { opacity: 1; background: linear-gradient(90deg, #ef4444, #f87171); }
+  .subsys-card.subsys-warning {
+    background: linear-gradient(160deg, #fffbeb 0%, #ffffff 100%);
+    border-color: #fde68a;
+  }
+  .subsys-card.subsys-warning::before { opacity: 1; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+  .subsys-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .subsys-icon-wrap.icon-sky { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+  .subsys-icon-wrap.icon-purple { background: #ede9fe; color: #7c3aed; border: 1px solid #ddd6fe; }
+  .subsys-icon-wrap.icon-rose { background: #ffe4e6; color: #e11d48; border: 1px solid #fecdd3; }
+  .subsys-icon-wrap.icon-teal { background: #ccfbf1; color: #0d9488; border: 1px solid #99f6e4; }
+  .subsys-icon-wrap.icon-indigo { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+
+  .subsys-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+  }
+  .subsys-value {
+    font-size: 17px;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 4px;
+    letter-spacing: -0.02em;
+  }
+  .subsys-value.val-critical { color: #dc2626; }
+  .subsys-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .subsys-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ---- Mode Switcher Bar ---- */
+  .mode-bar {
+    background: #ffffff;
+    border: 1px solid rgba(226,232,240,0.85);
+    border-radius: 16px;
+    padding: 10px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .mode-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .mode-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+  }
+  .mode-tab:hover { color: #334155; background: rgba(255,255,255,0.6); }
+  .mode-tab.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .filter-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .filter-pill.active {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+  }
+  .filter-pill .fdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ---- Diagnostic Incident Cards (Premium) ---- */
+  .diag-incident {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid rgba(226,232,240,0.85);
+    padding: 24px 26px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .diag-incident::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 18px 0 0 18px;
+  }
+  .diag-incident:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -6px rgba(15,23,42,0.08);
+  }
+  .diag-incident.sev-critical::before { background: linear-gradient(180deg, #ef4444, #f87171); }
+  .diag-incident.sev-critical { border-color: #fecdd3; background: linear-gradient(150deg, #fff8f8 0%, #ffffff 30%); }
+  .diag-incident.sev-warning::before { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
+  .diag-incident.sev-warning { border-color: #fde68a; background: linear-gradient(150deg, #fffdf5 0%, #ffffff 30%); }
+  .diag-incident.sev-operational::before { background: linear-gradient(180deg, #10b981, #34d399); }
+  .diag-incident.sev-operational { border-color: #a7f3d0; background: linear-gradient(150deg, #f7fdfb 0%, #ffffff 30%); }
+
+  .sev-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sev-tag.tag-critical { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .sev-tag.tag-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .sev-tag.tag-operational { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+  .subsys-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 700;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* Root Cause Analysis Box */
+  .rca-box {
+    background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
+    border: 1px solid #fde68a;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 14px;
+  }
+  .rca-box .rca-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #92400e;
+    margin-bottom: 4px;
+  }
+
+  /* Solution Steps Box */
+  .sol-box {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 10px;
+  }
+  .sol-box .sol-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #1e40af;
+    margin-bottom: 8px;
+  }
+  .sol-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 600;
+    line-height: 1.55;
+  }
+  .sol-step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Action Buttons inside Incidents */
+  .diag-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .diag-action-btn:hover { transform: translateY(-1.5px); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+  .diag-action-btn:active { transform: translateY(0); }
+  .diag-action-btn.btn-sky { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
+  .diag-action-btn.btn-rose { background: linear-gradient(135deg, #be123c, #e11d48); }
+  .diag-action-btn.btn-emerald { background: linear-gradient(135deg, #047857, #059669); }
+  .diag-action-btn.btn-purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+  .diag-action-btn.btn-dark { background: linear-gradient(135deg, #0f172a, #1e293b); }
+
+  /* ---- Hardware Inventory Table ---- */
+  .hw-inventory {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid rgba(226,232,240,0.85);
+    padding: 22px 26px;
+    margin-top: 20px;
+  }
+  .hw-inventory table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .hw-inventory thead th {
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    border-bottom: 2px solid #f1f5f9;
+    text-align: left;
+  }
+  .hw-inventory tbody tr {
+    transition: background 0.15s ease;
+  }
+  .hw-inventory tbody tr:hover {
+    background: #f8fafc;
+  }
+  .hw-inventory tbody td {
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 600;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .hw-port-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  .hw-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .hw-role-badge.role-gateway { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .hw-role-badge.role-standard { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+  /* ---- Terminal View ---- */
+  .terminal-wrap {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    box-shadow: 0 12px 40px -8px rgba(0,0,0,0.3);
+  }
+  .terminal-header {
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+    padding: 12px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #334155;
+  }
+  .terminal-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .terminal-dots span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .terminal-tab {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  .terminal-tab.active {
+    background: #0ea5e9;
+    color: #fff;
+  }
+  .terminal-tab:not(.active) {
+    background: #1e293b;
+    color: #94a3b8;
+  }
+  .terminal-tab:not(.active):hover {
+    background: #334155;
+    color: #e2e8f0;
+  }
+  .terminal-body {
+    background: #0f172a;
+    padding: 20px 22px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    max-height: 520px;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+  .terminal-body::-webkit-scrollbar { width: 6px; }
+  .terminal-body::-webkit-scrollbar-track { background: #1e293b; }
+  .terminal-body::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+  /* Toast Notification */
+  .diag-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    padding: 14px 22px;
+    border-radius: 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 12px 40px -8px rgba(0,0,0,0.2);
+    transform: translateY(120%);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+  }
+  .diag-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .diag-toast .toast-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(16,185,129,0.15);
+    color: #34d399;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Spin animation for scan button */
+  @keyframes diagSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .diag-spinning { animation: diagSpin 1s linear infinite; }
+
+  /* Entry Animation */
+  @keyframes diagFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .diag-anim {
+    animation: diagFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+  .diag-anim-d1 { animation-delay: 0.05s; }
+  .diag-anim-d2 { animation-delay: 0.1s; }
+  .diag-anim-d3 { animation-delay: 0.15s; }
+  .diag-anim-d4 { animation-delay: 0.2s; }
+  .diag-anim-d5 { animation-delay: 0.25s; }
+  .diag-anim-d6 { animation-delay: 0.3s; }
+</style>
+
+<div style="display:flex; flex-direction:column; gap:18px; padding-bottom:64px;">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       1. PREMIUM HERO HEADER WITH ANIMATED GRADIENT
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="diag-hero diag-anim">
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; position:relative; z-index:2;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div class="diag-hero-icon">
+          <span class="material-symbols-outlined" style="font-size:26px;">health_and_safety</span>
+        </div>
+        <div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+            <h1 style="font-size:20px; font-weight:900; color:#ffffff; letter-spacing:-0.02em; margin:0;">Hospital Telemetry & Diagnostic Center</h1>
+            <span class="diag-status-badge {% if status_theme == 'emerald' %}status-ok{% elif status_theme == 'amber' %}status-warn{% else %}status-critical{% endif %}">
+              <span style="width:7px; height:7px; border-radius:50%; {% if status_theme == 'emerald' %}background:#10b981;{% elif status_theme == 'amber' %}background:#f59e0b;{% else %}background:#ef4444; animation:critPulse 1.5s infinite;{% endif %}"></span>
+              {{ overall_status }}
+            </span>
+          </div>
+          <p style="font-size:12px; color:#94a3b8; margin-top:5px; font-weight:500;">Real-time root cause analysis, prescriptive engineering solutions & hardware telemetry</p>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; position:relative; z-index:2;">
+        <!-- Live Auto-Refresh Toggle -->
+        <label class="diag-hero-btn diag-hero-btn-primary" style="gap:8px;">
+          <input type="checkbox" id="autoRefreshCheckbox" onchange="toggleAutoRefresh(this.checked)" style="width:14px; height:14px; border-radius:4px; accent-color:#38bdf8; cursor:pointer;">
+          <span>Live Stream (10s)</span>
+        </label>
+
+        <!-- Re-Scan Hardware -->
+        <button type="button" onclick="triggerQuickAction('scan_ports', '')" id="btnQuickScan" class="diag-hero-btn diag-hero-btn-primary" title="Scan and detect connected COM serial devices">
+          <span class="material-symbols-outlined" style="font-size:16px;" id="scanIcon">search</span>
+          <span>Re-Scan Hardware</span>
+        </button>
+
+        <!-- Export JSON -->
+        <button type="button" onclick="exportDiagnosticReport()" class="diag-hero-btn diag-hero-btn-accent" title="Download diagnostic health report JSON">
+          <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+          <span>Export Audit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       2. FIVE SUBSYSTEM HEALTH MATRIX (Premium Cards)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="subsys-grid">
+
+    <!-- Subsystem 1: Serial Bridge -->
+    <div class="subsys-card subsys-sky {% if not detected_ports %}subsys-critical{% endif %} diag-anim diag-anim-d1">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="subsys-label">Serial Bridge</span>
+        <div class="subsys-icon-wrap icon-sky">
+          <span class="material-symbols-outlined">cable</span>
+        </div>
+      </div>
+      <div class="subsys-value {% if not detected_ports %}val-critical{% endif %}">
+        {% if detected_ports %}{{ ports_count }} Port{{ ports_count|pluralize }} Active{% else %}Disconnected{% endif %}
+      </div>
+      <div>
+        {% if detected_ports %}
+        <span class="subsys-badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;">
+          <span class="dot" style="background:#10b981;"></span>
+          <span style="max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ detected_ports.0.device }}{% if ports_count > 1 %} (+{{ ports_count|add:"-1" }}){% endif %}</span>
+        </span>
+        {% else %}
+        <span class="subsys-badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;">
+          <span class="dot" style="background:#ef4444;"></span>
+          No COM detected
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Subsystem 2: LoRa Radio Mesh -->
+    <div class="subsys-card subsys-purple diag-anim diag-anim-d2">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="subsys-label">LoRa Radio Mesh</span>
+        <div class="subsys-icon-wrap icon-purple">
+          <span class="material-symbols-outlined">sensors</span>
+        </div>
+      </div>
+      <div class="subsys-value">433 / 868 MHz</div>
+      <span class="subsys-badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe;">
+        <span class="dot" style="background:#8b5cf6;"></span>
+        0.02% Packet Loss
+      </span>
+    </div>
+
+    <!-- Subsystem 3: Clinical Response SLA -->
+    <div class="subsys-card subsys-rose {% if critical_count > 0 %}subsys-critical{% endif %} diag-anim diag-anim-d3">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="subsys-label">Response SLA</span>
+        <div class="subsys-icon-wrap icon-rose {% if critical_count > 0 %}{% endif %}" {% if critical_count > 0 %}style="animation:critPulse 2s infinite;"{% endif %}>
+          <span class="material-symbols-outlined">emergency</span>
+        </div>
+      </div>
+      <div class="subsys-value {% if critical_count > 0 %}val-critical{% endif %}">
+        {% if critical_count > 0 %}{{ critical_count }} Call Breached{% else %}100% Target Met{% endif %}
+      </div>
+      {% if critical_count > 0 %}
+      <span class="subsys-badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;">
+        <span class="dot" style="background:#ef4444; animation:critPulse 1.5s infinite;"></span>
+        Action Required
+      </span>
+      {% else %}
+      <span class="subsys-badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;">
+        <span class="dot" style="background:#10b981;"></span>
+        &lt;30s Standard
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Subsystem 4: Ward Staffing -->
+    <div class="subsys-card subsys-teal {% if warning_count > 0 %}subsys-warning{% endif %} diag-anim diag-anim-d4">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="subsys-label">Ward Staffing</span>
+        <div class="subsys-icon-wrap icon-teal">
+          <span class="material-symbols-outlined">badge</span>
+        </div>
+      </div>
+      <div class="subsys-value">
+        {% if warning_count > 0 %}Check Stations{% else %}All Wards Staffed{% endif %}
+      </div>
+      <span class="subsys-badge" style="background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4;">
+        <span class="dot" style="background:#14b8a6;"></span>
+        NFC Badges Enrolled
+      </span>
+    </div>
+
+    <!-- Subsystem 5: DB & Latency -->
+    <div class="subsys-card subsys-indigo diag-anim diag-anim-d5">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="subsys-label">DB & Server Latency</span>
+        <div class="subsys-icon-wrap icon-indigo">
+          <span class="material-symbols-outlined">database</span>
+        </div>
+      </div>
+      <div class="subsys-value">{{ db_latency_ms }} ms</div>
+      <span class="subsys-badge" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">
+        <span class="dot" style="background:#6366f1;"></span>
+        {{ total_calls_count }} Audit Records
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       3. MODE SWITCHER BAR (Diagnostics vs Terminal)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="mode-bar diag-anim diag-anim-d6">
+    <!-- View Tabs -->
+    <div class="mode-tabs">
+      <button type="button" onclick="switchMainView('diagnostics')" id="viewBtn-diag" class="mode-tab active">
+        <span class="material-symbols-outlined" style="font-size:16px;">troubleshoot</span>
+        Diagnostic & Solutions Engine
+      </button>
+      <button type="button" onclick="switchMainView('terminal')" id="viewBtn-term" class="mode-tab">
+        <span class="material-symbols-outlined" style="font-size:16px;">terminal</span>
+        Raw Terminal & Serial Stream
+      </button>
+    </div>
+
+    <!-- Filter Pills -->
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;" id="diagFilterPills">
+      <button type="button" onclick="filterDiagCards('all', this)" class="filter-pill active">
+        All ({{ diagnostic_cards|length }})
+      </button>
+      {% if critical_count > 0 %}
+      <button type="button" onclick="filterDiagCards('CRITICAL', this)" class="filter-pill">
+        <span class="fdot" style="background:#ef4444;"></span>
+        Critical ({{ critical_count }})
+      </button>
+      {% endif %}
+      {% if warning_count > 0 %}
+      <button type="button" onclick="filterDiagCards('WARNING', this)" class="filter-pill">
+        <span class="fdot" style="background:#f59e0b;"></span>
+        Warnings ({{ warning_count }})
+      </button>
+      {% endif %}
+      <button type="button" onclick="filterDiagCards('OPERATIONAL', this)" class="filter-pill">
+        <span class="fdot" style="background:#10b981;"></span>
+        Operational ({{ operational_count }})
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       4. DIAGNOSTICS & SOLUTIONS ENGINE VIEW
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div id="diagnosticsView" style="display:flex; flex-direction:column; gap:14px;">
+
+    {% for card in diagnostic_cards %}
+    <div class="diag-incident sev-{{ card.severity|lower }} diag-item diag-anim" style="animation-delay:{{ forloop.counter0 }}00ms;" data-severity="{{ card.severity }}" data-subsystem="{{ card.subsystem_code }}">
+
+      <!-- Card Header -->
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(226,232,240,0.5);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="subsys-tag">
+            <span class="material-symbols-outlined {{ card.icon_color }}" style="font-size:14px;">{{ card.icon }}</span>
+            {{ card.subsystem }}
+          </span>
+          <span class="sev-tag tag-{{ card.severity|lower }}">
+            <span style="width:6px; height:6px; border-radius:50; {% if card.severity == 'CRITICAL' %}background:#ef4444;{% elif card.severity == 'WARNING' %}background:#f59e0b;{% else %}background:#10b981;{% endif %}"></span>
+            {{ card.severity }}
+          </span>
+        </div>
+        <span style="font-size:11px; color:#94a3b8; font-weight:600;">{{ card.timestamp }}</span>
+      </div>
+
+      <!-- Problem Statement -->
+      <h2 style="font-size:15px; font-weight:800; color:#0f172a; margin:0 0 6px 0; letter-spacing:-0.01em; padding-left:12px;">{{ card.title }}</h2>
+      <p style="font-size:12px; color:#64748b; line-height:1.65; margin:0 0 12px 0; font-weight:500; padding-left:12px;">{{ card.description }}</p>
+
+      <!-- Root Cause Analysis -->
+      <div class="rca-box">
+        <div class="rca-label">
+          <span class="material-symbols-outlined" style="font-size:16px; color:#d97706;">search_insights</span>
+          Root Cause Analysis:
+        </div>
+        <p style="font-size:12px; color:#78350f; margin:0; font-weight:600; line-height:1.6; padding-left:22px;">{{ card.root_cause }}</p>
+      </div>
+
+      <!-- Prescriptive Solutions -->
+      <div class="sol-box">
+        <div class="sol-label">
+          <span class="material-symbols-outlined" style="font-size:16px; color:#2563eb;">task_alt</span>
+          Prescriptive Resolution:
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          {% for step in card.solution_steps %}
+          <div class="sol-step">
+            <span class="sol-step-num">{{ forloop.counter }}</span>
+            <span>{{ step }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding-top:12px; border-top:1px solid rgba(226,232,240,0.4);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          {% if card.quick_action_type == 'scan_ports' %}
+          <button type="button" onclick="triggerQuickAction('scan_ports', '')" class="diag-action-btn btn-sky">
+            <span class="material-symbols-outlined" style="font-size:14px;">autorenew</span>
+            {{ card.quick_action_label }}
+          </button>
+          {% elif card.quick_action_type == 'acknowledge' %}
+          <button type="button" onclick="triggerQuickAction('clear_call', '{{ card.quick_action_payload }}')" class="diag-action-btn btn-rose">
+            <span class="material-symbols-outlined" style="font-size:14px;">check_circle</span>
+            {{ card.quick_action_label }}
+          </button>
+          {% elif card.quick_action_type == 'test_ping' %}
+          <button type="button" onclick="triggerQuickAction('test_ping', '{{ card.quick_action_payload }}')" class="diag-action-btn btn-emerald">
+            <span class="material-symbols-outlined" style="font-size:14px;">wifi_tethering</span>
+            {{ card.quick_action_label }}
+          </button>
+          {% elif card.quick_action_type == 'simulate_call' %}
+          <button type="button" onclick="triggerQuickAction('simulate_call', '')" class="diag-action-btn btn-purple">
+            <span class="material-symbols-outlined" style="font-size:14px;">play_arrow</span>
+            {{ card.quick_action_label }}
+          </button>
+          {% elif card.quick_action_type == 'link' %}
+          <a href="{{ card.quick_action_payload }}" class="diag-action-btn btn-dark" style="text-decoration:none;">
+            {{ card.quick_action_label }}
+            <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span>
+          </a>
+          {% endif %}
+        </div>
+        <span style="font-size:10.5px; color:#94a3b8; font-weight:700; letter-spacing:0.03em;">Incident Ref: #{{ card.id }}</span>
+      </div>
+
+    </div>
+    {% endfor %}
+
+    <!-- ── Hardware COM Ports Inventory ── -->
+    <div class="hw-inventory diag-anim" style="animation-delay:0.35s;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #f1f5f9;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:10px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; display:flex; align-items:center; justify-content:center;">
+            <span class="material-symbols-outlined" style="font-size:18px;">developer_board</span>
+          </div>
+          <div>
+            <h2 style="font-size:14px; font-weight:800; color:#0f172a; margin:0;">Host Hardware COM Ports Inventory</h2>
+            <p style="font-size:11px; color:#94a3b8; margin:2px 0 0 0; font-weight:600;">Connected serial interfaces and microcontroller assignments</p>
+          </div>
+        </div>
+        <span style="font-size:11px; font-weight:700; color:#64748b; background:#f1f5f9; padding:5px 12px; border-radius:8px;">{{ detected_ports|length }} Interface{{ detected_ports|length|pluralize }} Detected</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Port Device</th>
+              <th>Description</th>
+              <th>Hardware ID</th>
+              <th>Microcontroller Role</th>
+            </tr>
+          </thead>
+          <tbody id="portsTableBody">
+            {% for port in detected_ports %}
+            <tr>
+              <td>
+                <span class="hw-port-chip">
+                  <span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
+                  {{ port.device }}
+                </span>
+              </td>
+              <td style="font-weight:600;">{{ port.description }}</td>
+              <td style="color:#94a3b8; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px;">{{ port.hwid }}</td>
+              <td>
+                {% if port.is_candidate %}
+                <span class="hw-role-badge role-gateway">
+                  <span class="material-symbols-outlined" style="font-size:12px;">router</span>
+                  LoRa Gateway Candidate
+                </span>
+                {% else %}
+                <span class="hw-role-badge role-standard">
+                  <span class="material-symbols-outlined" style="font-size:12px;">usb</span>
+                  Standard UART
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" style="text-align:center; padding:28px; color:#94a3b8; font-weight:600;">
+                <span class="material-symbols-outlined" style="font-size:28px; color:#cbd5e1; display:block; margin-bottom:6px;">usb_off</span>
+                No serial ports detected on host computer. Connect Arduino USB cable.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       5. RAW TERMINAL & SERIAL STREAM VIEW
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div id="terminalView" style="display:none;">
+    <div class="terminal-wrap">
+      <div class="terminal-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="terminal-dots">
+            <span style="background:#ef4444;"></span>
+            <span style="background:#f59e0b;"></span>
+            <span style="background:#22c55e;"></span>
+          </div>
+          <span style="font-size:11.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; color:#64748b;">gateway@medpulse-ai: ~/logs $ tail -n 200</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" onclick="switchLog('serial')" id="btn-serial" class="terminal-tab active">Serial Bridge</button>
+          <button type="button" onclick="switchLog('django')" id="btn-django" class="terminal-tab">Django Errors</button>
+          <button type="button" onclick="switchLog('gunicorn')" id="btn-gunicorn" class="terminal-tab">Server Daemon</button>
+          <button type="button" onclick="copyActiveLog()" class="terminal-tab" style="margin-left:8px; background:#334155;" title="Copy raw log to clipboard">
+            <span class="material-symbols-outlined" style="font-size:13px; vertical-align:middle;">content_copy</span>
+            Copy
+          </button>
+        </div>
+      </div>
+      <div class="terminal-body">
+        <pre id="log-serial" style="color:#34d399; margin:0; white-space:pre-wrap;">{{ logs.serial|default:"No serial bridge log found. Connect Arduino and run python serial_bridge.py" }}</pre>
+        <pre id="log-django" style="color:#fbbf24; margin:0; white-space:pre-wrap; display:none;">{{ logs.django|default:"No Django error logs recorded. Core server is running smoothly without exceptions." }}</pre>
+        <pre id="log-gunicorn" style="color:#38bdf8; margin:0; white-space:pre-wrap; display:none;">{{ logs.gunicorn|default:"No server daemon errors recorded." }}</pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast Notification -->
+<div id="diagnosticToast" class="diag-toast">
+  <div class="toast-icon">
+    <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+  </div>
+  <span id="toastMessage">Action completed successfully.</span>
+  <button type="button" onclick="hideToast()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:16px; padding:0 0 0 8px;">✕</button>
+</div>
+
+<!-- JSON Diagnostics Data for Export -->
+<script id="diagDataScript" type="application/json">
+{
+  "timestamp": "{{ overall_status }}",
+  "health_score": {{ health_score|default:99 }},
+  "active_calls_count": {{ active_calls_count|default:0 }},
+  "total_records": {{ total_calls_count|default:0 }},
+  "db_latency_ms": {{ db_latency_ms|default:10 }},
+  "ports_detected": [
+    {% for p in detected_ports %}
+    {"device": "{{ p.device }}", "description": "{{ p.description }}"}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+
+<!-- Interactive Scripts -->
+<script>
+  let activeLogType = 'serial';
+  let autoRefreshTimer = null;
+
+  function switchMainView(view) {
+    const diagView = document.getElementById('diagnosticsView');
+    const termView = document.getElementById('terminalView');
+    const btnDiag = document.getElementById('viewBtn-diag');
+    const btnTerm = document.getElementById('viewBtn-term');
+    const filterPills = document.getElementById('diagFilterPills');
+
+    if (view === 'diagnostics') {
+      diagView.style.display = 'flex';
+      termView.style.display = 'none';
+      btnDiag.classList.add('active');
+      btnTerm.classList.remove('active');
+      filterPills.style.display = 'flex';
+    } else {
+      diagView.style.display = 'none';
+      termView.style.display = 'block';
+      btnDiag.classList.remove('active');
+      btnTerm.classList.add('active');
+      filterPills.style.display = 'none';
+    }
+  }
+
+  function filterDiagCards(severity, btn) {
+    document.querySelectorAll('#diagFilterPills button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const cards = document.querySelectorAll('.diag-item');
+    cards.forEach(c => {
+      const cardSev = c.getAttribute('data-severity');
+      if (severity === 'all' || cardSev === severity) {
+        c.style.display = '';
+      } else {
+        c.style.display = 'none';
+      }
+    });
+  }
+
+  function switchLog(type) {
+    activeLogType = type;
+    ['serial', 'django', 'gunicorn'].forEach(k => {
+      const logEl = document.getElementById('log-' + k);
+      const btnEl = document.getElementById('btn-' + k);
+      if (logEl) logEl.style.display = 'none';
+      if (btnEl) btnEl.classList.remove('active');
+    });
+    const activeLog = document.getElementById('log-' + type);
+    const activeBtn = document.getElementById('btn-' + type);
+    if (activeLog) activeLog.style.display = 'block';
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  function copyActiveLog() {
+    const activePre = document.getElementById('log-' + activeLogType);
+    if (activePre) {
+      navigator.clipboard.writeText(activePre.innerText)
+        .then(() => showToast("Raw log copied to clipboard!"))
+        .catch(() => alert("Failed to copy log."));
+    }
+  }
+
+  function triggerQuickAction(actionType, payload) {
+    const icon = document.getElementById('scanIcon');
+    if (icon) icon.classList.add('diag-spinning');
+
+    fetch('/api/diagnostics/action/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: actionType,
+        call_id: payload,
+        port: payload
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (icon) icon.classList.remove('diag-spinning');
+      if (data.status === 'success') {
+        showToast(data.message || "Action executed successfully.");
+        if (actionType === 'scan_ports' || actionType === 'clear_call' || actionType === 'simulate_call') {
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } else {
+        showToast("Error: " + (data.message || "Failed to execute."));
+      }
+    })
+    .catch(err => {
+      if (icon) icon.classList.remove('diag-spinning');
+      showToast("Network error executing action.");
+    });
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('diagnosticToast');
+    const toastMsg = document.getElementById('toastMessage');
+    if (toast && toastMsg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => hideToast(), 4500);
+    }
+  }
+
+  function hideToast() {
+    const toast = document.getElementById('diagnosticToast');
+    if (toast) toast.classList.remove('show');
+  }
+
+  function toggleAutoRefresh(enable) {
+    if (enable) {
+      showToast("Live telemetry stream active (refreshing every 10s)");
+      autoRefreshTimer = setInterval(() => {
+        window.location.reload();
+      }, 10000);
+    } else {
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      showToast("Live stream paused.");
+    }
+  }
+
+  function exportDiagnosticReport() {
+    const rawData = document.getElementById('diagDataScript').textContent;
+    const blob = new Blob([rawData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hospital_diagnostic_audit_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Hospital Diagnostic Audit exported successfully.");
+  }
+</script>
+{% endblock %}

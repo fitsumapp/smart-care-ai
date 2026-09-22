@@ -1,0 +1,22 @@
+[Unit]
+Description=MedPulse Smart-Care AI — Web Server (Gunicorn)
+After=network.target
+
+[Service]
+User=pi
+Group=www-data
+WorkingDirectory=/home/pi/ai_nurse_system
+EnvironmentFile=/home/pi/ai_nurse_system/.env
+ExecStart=/home/pi/ai_nurse_system/venv/bin/gunicorn \
+          --workers 2 \
+          --bind 0.0.0.0:8000 \
+          --timeout 120 \
+          --access-logfile /home/pi/ai_nurse_system/logs/gunicorn_access.log \
+          --error-logfile /home/pi/ai_nurse_system/logs/gunicorn_error.log \
+          ai_nurse_server.wsgi:application
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

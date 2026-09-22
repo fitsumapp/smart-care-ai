@@ -1,0 +1,807 @@
+{% extends 'admin/base.html' %}
+{% load i18n static %}
+
+{% block title %}Clinical Reports & Audit System | Apex MedPulse Admin{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin_apex.css' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+
+<style>
+  /* ══════════════════════════════════════════════════════════════════
+     PREMIUM REPORTS PAGE — CLINICAL AUDIT CENTER
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* --- Hero Header with animated gradient --- */
+  .rpt-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 35%, #0e4d92 65%, #1a73e8 100%);
+    background-size: 300% 300%;
+    animation: rptShift 14s ease-in-out infinite;
+    border-radius: 20px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  @keyframes rptShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .rpt-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -15%;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .rpt-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    left: -8%;
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .rpt-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #7dd3fc;
+    flex-shrink: 0;
+  }
+  .rpt-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .rpt-hero-btn:hover { transform: translateY(-2px); }
+  .rpt-hero-btn:active { transform: translateY(0); }
+  .rpt-hero-btn-glass {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+  }
+  .rpt-hero-btn-glass:hover {
+    background: rgba(255,255,255,0.20);
+    border-color: rgba(255,255,255,0.28);
+  }
+  .rpt-hero-btn-white {
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .rpt-hero-btn-white:hover {
+    background: #f1f5f9;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  }
+
+  /* --- Filter Card --- */
+  .rpt-filter-card {
+    background: #ffffff;
+    border: 1px solid rgba(226,232,240,0.85);
+    border-radius: 18px;
+    padding: 24px 26px;
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.04);
+  }
+  .rpt-preset {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .rpt-preset:hover { background: #e2e8f0; color: #1e293b; }
+  .rpt-preset.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+  }
+  .rpt-input {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 11px 16px 11px 42px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .rpt-input:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2,132,199,0.12);
+  }
+  .rpt-input-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    font-size: 18px;
+  }
+  .rpt-select {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .rpt-select:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2,132,199,0.12);
+  }
+  .rpt-update-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 11px 20px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0066cc, #0284c7);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 14px rgba(0,102,204,0.25);
+  }
+  .rpt-update-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,102,204,0.35);
+  }
+
+  /* --- Export Cards --- */
+  .rpt-export-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .rpt-export-grid { grid-template-columns: 1fr; } }
+
+  .rpt-export-card {
+    background: #ffffff;
+    border: 1px solid rgba(226,232,240,0.85);
+    border-radius: 18px;
+    padding: 0;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+  .rpt-export-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px -6px rgba(15,23,42,0.1);
+  }
+  .rpt-export-top {
+    padding: 22px 22px 16px;
+    position: relative;
+  }
+  .rpt-export-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+  .rpt-export-card.card-rose .rpt-export-top::before { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+  .rpt-export-card.card-indigo .rpt-export-top::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+  .rpt-export-card.card-sky .rpt-export-top::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+
+  .rpt-export-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .rpt-export-icon.icon-rose { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+  .rpt-export-icon.icon-indigo { background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+  .rpt-export-icon.icon-sky { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+
+  .rpt-export-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 22px 20px;
+  }
+  .rpt-dl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+  }
+  .rpt-dl-btn:hover { transform: translateY(-1.5px); }
+  .rpt-dl-btn:active { transform: translateY(0); }
+  .rpt-dl-btn.dl-pdf { background: linear-gradient(135deg, #be123c, #e11d48); box-shadow: 0 3px 10px rgba(225,29,72,0.25); }
+  .rpt-dl-btn.dl-excel { background: linear-gradient(135deg, #047857, #059669); box-shadow: 0 3px 10px rgba(5,150,105,0.25); }
+  .rpt-dl-btn.dl-primary { background: linear-gradient(135deg, #0066cc, #0284c7); box-shadow: 0 3px 10px rgba(0,102,204,0.25); }
+  .rpt-dl-btn.dl-purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); box-shadow: 0 3px 10px rgba(124,58,237,0.25); }
+
+  /* --- Data Table --- */
+  .rpt-table-card {
+    background: #ffffff;
+    border: 1px solid rgba(226,232,240,0.85);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .rpt-table-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .rpt-search-input {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 14px 8px 36px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    width: 280px;
+    max-width: 100%;
+    transition: all 0.2s;
+  }
+  .rpt-search-input:focus {
+    background: #fff;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2,132,199,0.1);
+  }
+  .rpt-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: left;
+  }
+  .rpt-table th {
+    background: #f8fafc;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 12px 16px;
+    border-bottom: 2px solid #f1f5f9;
+  }
+  .rpt-table td {
+    padding: 14px 16px;
+    font-size: 12.5px;
+    color: #334155;
+    font-weight: 600;
+    border-bottom: 1px solid #f8fafc;
+    vertical-align: middle;
+  }
+  .rpt-table tbody tr {
+    transition: background 0.15s ease;
+  }
+  .rpt-table tbody tr:hover {
+    background: #fafbfc;
+  }
+
+  /* Status badges */
+  .rpt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .rpt-badge.b-resolved { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .rpt-badge.b-way { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .rpt-badge.b-active { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .rpt-badge.b-emergency { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .rpt-badge.b-urgent { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .rpt-badge.b-normal { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .rpt-badge .bdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  @keyframes rptPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .rpt-pulse { animation: rptPulse 1.5s ease-in-out infinite; }
+
+  /* Entry Animation */
+  @keyframes rptFadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .rpt-anim {
+    animation: rptFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+  .rpt-d1 { animation-delay: 0.05s; }
+  .rpt-d2 { animation-delay: 0.1s; }
+  .rpt-d3 { animation-delay: 0.15s; }
+  .rpt-d4 { animation-delay: 0.2s; }
+  .rpt-d5 { animation-delay: 0.25s; }
+</style>
+
+<div style="display:flex; flex-direction:column; gap:16px; padding-bottom:64px;">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       1. PREMIUM HERO HEADER
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="rpt-hero rpt-anim">
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; position:relative; z-index:2;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div class="rpt-hero-icon">
+          <span class="material-symbols-outlined" style="font-size:26px;">analytics</span>
+        </div>
+        <div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+            <h1 style="font-size:20px; font-weight:900; color:#ffffff; letter-spacing:-0.02em; margin:0;">System Reports & Clinical Audit</h1>
+            <span style="padding:4px 12px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; background:rgba(56,189,248,0.15); color:#7dd3fc; border:1px solid rgba(56,189,248,0.25);">CLINICAL SUITE</span>
+          </div>
+          <p style="font-size:12px; color:#94a3b8; margin-top:5px; font-weight:500;">Operational metrics, nurse performance audits & multi-format report exports</p>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; position:relative; z-index:2;">
+        <a href="/export/csv/" target="_blank" class="rpt-hero-btn rpt-hero-btn-white">
+          <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+          Export CSV
+        </a>
+        <button onclick="window.print()" class="rpt-hero-btn rpt-hero-btn-glass">
+          <span class="material-symbols-outlined" style="font-size:16px;">print</span>
+          Print View
+        </button>
+        <a href="{% url 'admin_reports' %}" class="rpt-hero-btn rpt-hero-btn-glass">
+          <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>
+          Reset
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       2. UNIFIED DATE & TIME FILTER
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="rpt-filter-card rpt-anim rpt-d1">
+    <!-- Header Row with Presets -->
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #f1f5f9;">
+      <div>
+        <h2 style="font-size:14px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:18px; color:#0284c7;">tune</span>
+          Unified Date & Time Filter
+        </h2>
+        <p style="font-size:11px; color:#94a3b8; margin:3px 0 0; font-weight:500;">Filter all patient calls and exports by custom shift, date range, or preset</p>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:5px;">
+        <span style="font-size:10.5px; font-weight:700; color:#94a3b8; margin-right:4px;">Presets:</span>
+        <button type="button" onclick="setPreset('today')" class="rpt-preset">Today</button>
+        <button type="button" onclick="setPreset('last24h')" class="rpt-preset">Last 24h</button>
+        <button type="button" onclick="setPreset('week')" class="rpt-preset">7 Days</button>
+        <button type="button" onclick="setPreset('month')" class="rpt-preset">30 Days</button>
+        <button type="button" onclick="setPreset('all')" class="rpt-preset">All Records</button>
+      </div>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="GET" id="reportFilterForm" style="display:grid; grid-template-columns:1fr 1fr 160px 160px; gap:12px; align-items:end;">
+      <div>
+        <label style="display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; margin-bottom:6px;">Start Date & Time</label>
+        <div style="position:relative;">
+          <span class="material-symbols-outlined rpt-input-icon">calendar_month</span>
+          <input type="text" name="start" id="start_date" class="rpt-input" placeholder="YYYY-MM-DD HH:MM" value="{{ start_date }}">
+        </div>
+      </div>
+      <div>
+        <label style="display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; margin-bottom:6px;">End Date & Time</label>
+        <div style="position:relative;">
+          <span class="material-symbols-outlined rpt-input-icon">event</span>
+          <input type="text" name="end" id="end_date" class="rpt-input" placeholder="YYYY-MM-DD HH:MM" value="{{ end_date }}">
+        </div>
+      </div>
+      <div>
+        <label style="display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; margin-bottom:6px;">Rows Limit</label>
+        <select name="limit" class="rpt-select">
+          <option value="10" {% if limit == 10 %}selected{% endif %}>10 Calls</option>
+          <option value="25" {% if limit == 25 %}selected{% endif %}>25 Calls</option>
+          <option value="50" {% if limit == 50 %}selected{% endif %}>50 Calls</option>
+          <option value="100" {% if limit == 100 %}selected{% endif %}>100 Calls</option>
+          <option value="500" {% if limit == 500 %}selected{% endif %}>500 Calls</option>
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="rpt-update-btn">
+          <span class="material-symbols-outlined" style="font-size:16px;">sync</span>
+          Update View
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       3. EXPORT CARDS (3 Column Grid)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="rpt-export-grid">
+
+    <!-- Card 1: Station Operational Reports -->
+    <div class="rpt-export-card card-rose rpt-anim rpt-d2">
+      <div class="rpt-export-top">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <div class="rpt-export-icon icon-rose">
+            <span class="material-symbols-outlined" style="font-size:22px;">local_hospital</span>
+          </div>
+          <div>
+            <h3 style="font-size:14px; font-weight:800; color:#0f172a; margin:0;">Station Reports</h3>
+            <p style="font-size:11px; color:#94a3b8; margin:2px 0 0; font-weight:500;">Activity logs, call volume & response audits</p>
+          </div>
+        </div>
+        <div style="font-size:10.5px; color:#94a3b8; font-weight:600; padding:6px 10px; background:#f8fafc; border-radius:8px; text-align:center; border:1px solid #f1f5f9;">
+          {% if start_date and end_date %}
+            <span class="material-symbols-outlined" style="font-size:12px; vertical-align:-2px; color:#0284c7;">date_range</span>
+            {{ start_date }} → {{ end_date }}
+          {% else %}
+            Exporting all available historical records
+          {% endif %}
+        </div>
+      </div>
+      <div class="rpt-export-btns">
+        <a href="{% url 'export_report' %}?type=station&format=pdf{% if start_date and end_date %}&start={{ start_date }}&end={{ end_date }}{% endif %}" class="rpt-dl-btn dl-pdf">
+          <span class="material-symbols-outlined" style="font-size:15px;">picture_as_pdf</span>
+          PDF
+        </a>
+        <a href="{% url 'export_report' %}?type=station&format=excel{% if start_date and end_date %}&start={{ start_date }}&end={{ end_date }}{% endif %}" class="rpt-dl-btn dl-excel">
+          <span class="material-symbols-outlined" style="font-size:15px;">table_view</span>
+          Excel
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 2: Nurse Performance & HR Reports -->
+    <div class="rpt-export-card card-indigo rpt-anim rpt-d3">
+      <div class="rpt-export-top">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <div class="rpt-export-icon icon-indigo">
+            <span class="material-symbols-outlined" style="font-size:22px;">clinical_notes</span>
+          </div>
+          <div>
+            <h3 style="font-size:14px; font-weight:800; color:#0f172a; margin:0;">Nurse Performance</h3>
+            <p style="font-size:11px; color:#94a3b8; margin:2px 0 0; font-weight:500;">Response benchmarks & shift efficiency</p>
+          </div>
+        </div>
+        <div style="font-size:10.5px; color:#94a3b8; font-weight:600; padding:6px 10px; background:#f8fafc; border-radius:8px; text-align:center; border:1px solid #f1f5f9;">
+          {% if start_date and end_date %}
+            <span class="material-symbols-outlined" style="font-size:12px; vertical-align:-2px; color:#4f46e5;">date_range</span>
+            {{ start_date }} → {{ end_date }}
+          {% else %}
+            Exporting all available staff shift logs
+          {% endif %}
+        </div>
+      </div>
+      <div class="rpt-export-btns">
+        <a href="{% url 'export_report' %}?type=nurse&format=pdf{% if start_date and end_date %}&start={{ start_date }}&end={{ end_date }}{% endif %}" class="rpt-dl-btn dl-primary">
+          <span class="material-symbols-outlined" style="font-size:15px;">picture_as_pdf</span>
+          Staff PDF
+        </a>
+        <a href="{% url 'export_report' %}?type=nurse&format=excel{% if start_date and end_date %}&start={{ start_date }}&end={{ end_date }}{% endif %}" class="rpt-dl-btn dl-purple">
+          <span class="material-symbols-outlined" style="font-size:15px;">table_view</span>
+          Staff Excel
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 3: Individual Nurse Report -->
+    <div class="rpt-export-card card-sky rpt-anim rpt-d4">
+      <div class="rpt-export-top">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <div class="rpt-export-icon icon-sky">
+            <span class="material-symbols-outlined" style="font-size:22px;">badge</span>
+          </div>
+          <div>
+            <h3 style="font-size:14px; font-weight:800; color:#0f172a; margin:0;">Individual Audit</h3>
+            <p style="font-size:11px; color:#94a3b8; margin:2px 0 0; font-weight:500;">Per-nurse call log & response speed</p>
+          </div>
+        </div>
+        <div style="padding-bottom:2px;">
+          <label style="display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8; margin-bottom:5px;">Select Nurse:</label>
+          <select id="nurse_select" class="rpt-select" style="font-size:12px; padding:9px 12px;">
+            <option value="">-- Choose Nurse (Name & Staff ID) --</option>
+            {% for n in nurses %}
+            <option value="{{ n.id }}">{{ n.full_name }} (ID: {{ n.nurse_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="rpt-export-btns">
+        <button type="button" onclick="downloadNurseReport('pdf')" class="rpt-dl-btn dl-primary">
+          <span class="material-symbols-outlined" style="font-size:15px;">picture_as_pdf</span>
+          PDF
+        </button>
+        <button type="button" onclick="downloadNurseReport('excel')" class="rpt-dl-btn dl-excel">
+          <span class="material-symbols-outlined" style="font-size:15px;">table_view</span>
+          Excel
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       4. RECENT CALL ACTIVITY TABLE
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="rpt-table-card rpt-anim rpt-d5">
+    <div class="rpt-table-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:38px; height:38px; border-radius:12px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; display:flex; align-items:center; justify-content:center;">
+          <span class="material-symbols-outlined" style="font-size:18px;">history</span>
+        </div>
+        <div>
+          <h3 style="font-size:14px; font-weight:800; color:#0f172a; margin:0;">Recent Call Activity Audit</h3>
+          <p style="font-size:11px; color:#94a3b8; margin:2px 0 0; font-weight:500;">Showing latest {{ calls|length }} patient nurse call events</p>
+        </div>
+      </div>
+
+      <div style="position:relative;">
+        <span class="material-symbols-outlined" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:16px; pointer-events:none;">search</span>
+        <input type="text" id="tableSearch" onkeyup="filterCallTable()" placeholder="Search room, nurse, type..." class="rpt-search-input">
+      </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="rpt-table" id="callsTable">
+        <thead>
+          <tr>
+            <th>Room & Bed</th>
+            <th>Nurse Responder</th>
+            <th>Call Type</th>
+            <th>Time Triggered</th>
+            <th>Response (Enter)</th>
+            <th>Arrival (Button)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for call in calls %}
+          <tr class="call-row">
+            <!-- Room & Bed -->
+            <td>
+              <div style="font-weight:800; color:#0f172a; font-size:13px;">Room {{ call.room_number }}</div>
+              <div style="font-size:10.5px; color:#94a3b8; font-weight:600;">Bed: {{ call.bed_number }}</div>
+            </td>
+
+            <!-- Nurse Responder -->
+            <td>
+              {% if call.responded_by %}
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:30px; height:30px; border-radius:8px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">👩‍⚕️</div>
+                <div>
+                  <div style="font-weight:700; color:#0284c7; font-size:12px;">{{ call.responded_by.full_name }}</div>
+                  <div style="font-size:10px; color:#94a3b8; font-family:ui-monospace,Consolas,monospace;">ID: {{ call.responded_by.nurse_id }}</div>
+                </div>
+              </div>
+              {% else %}
+              <span style="color:#cbd5e1; font-size:12px;">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Call Type -->
+            <td>
+              {% if call.call_type == 'Emergency' or call.call_type == 'Critical' or call.call_type == 'AI_FALL' %}
+              <span class="rpt-badge b-emergency">
+                <span class="bdot rpt-pulse" style="background:#ef4444;"></span>
+                {{ call.call_type }}
+              </span>
+              {% elif call.call_type == 'Urgent' or call.call_type == 'AI_TREMOR' %}
+              <span class="rpt-badge b-urgent">
+                <span class="bdot" style="background:#f59e0b;"></span>
+                {{ call.call_type }}
+              </span>
+              {% else %}
+              <span class="rpt-badge b-normal">
+                <span class="bdot" style="background:#10b981;"></span>
+                {{ call.call_type }}
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Time Triggered -->
+            <td>
+              <div style="font-weight:700; font-size:12px; color:#1e293b;">{{ call.created_at|date:"h:i:s A" }}</div>
+              <div style="font-size:10.5px; color:#94a3b8; font-weight:500;">{{ call.created_at|date:"M d, Y" }}</div>
+            </td>
+
+            <!-- Response Time -->
+            <td>
+              {% if call.acknowledged_at %}
+              <div style="font-weight:700; font-size:12px; color:#1e293b;">{{ call.acknowledged_at|date:"h:i:s A" }}</div>
+              <div style="font-size:10.5px; font-weight:700; color:#d97706;">Wait: {{ call.get_acknowledgment_time }}s</div>
+              {% else %}
+              <span style="color:#cbd5e1; font-size:11px; font-style:italic;">Pending...</span>
+              {% endif %}
+            </td>
+
+            <!-- Arrival Time -->
+            <td>
+              {% if call.is_special_call %}
+              <span style="color:#cbd5e1; font-size:11px; font-style:italic;">Not Required</span>
+              {% elif call.arrived_at %}
+              <div style="font-weight:700; font-size:12px; color:#1e293b;">{{ call.arrived_at|date:"h:i:s A" }}</div>
+              <div style="font-size:10.5px; font-weight:700; color:#059669;">Service: {{ call.get_service_time }}s</div>
+              {% else %}
+              <span style="color:#cbd5e1; font-size:12px;">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Status -->
+            <td>
+              {% if not call.is_active %}
+              <span class="rpt-badge b-resolved">
+                <span class="material-symbols-outlined" style="font-size:12px;">done_all</span>
+                RESOLVED
+              </span>
+              {% elif call.is_acknowledged %}
+              <span class="rpt-badge b-way">
+                <span class="material-symbols-outlined" style="font-size:12px;">directions_run</span>
+                ON THE WAY
+              </span>
+              {% else %}
+              <span class="rpt-badge b-active">
+                <span class="bdot rpt-pulse" style="background:#ef4444;"></span>
+                ACTIVE
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" style="text-align:center; padding:40px 20px; color:#94a3b8;">
+              <span class="material-symbols-outlined" style="font-size:36px; color:#e2e8f0; display:block; margin-bottom:8px;">folder_off</span>
+              <span style="font-weight:700; font-size:13px;">No call records found matching this filter criteria.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interactive Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+  // Initialize Flatpickr
+  const fpConfig = {
+    enableTime: true,
+    dateFormat: "Y-m-d H:i",
+    time_24hr: true,
+    allowInput: true
+  };
+  const startFp = flatpickr("#start_date", fpConfig);
+  const endFp = flatpickr("#end_date", fpConfig);
+
+  function formatFpDate(d) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // Quick Presets
+  function setPreset(preset) {
+    // Highlight active preset
+    document.querySelectorAll('.rpt-preset').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const now = new Date();
+    let s = new Date();
+    let e = new Date();
+
+    if (preset === 'today') {
+      s.setHours(0, 0, 0, 0);
+      e.setHours(23, 59, 59, 999);
+    } else if (preset === 'last24h') {
+      s = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    } else if (preset === 'week') {
+      s = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    } else if (preset === 'month') {
+      s = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    } else if (preset === 'all') {
+      startFp.clear();
+      endFp.clear();
+      document.getElementById('reportFilterForm').submit();
+      return;
+    }
+
+    startFp.setDate(s, true);
+    endFp.setDate(e, true);
+    document.getElementById('reportFilterForm').submit();
+  }
+
+  // Individual Nurse Report
+  function downloadNurseReport(fmt) {
+    const nurseSelect = document.getElementById('nurse_select');
+    const nurseId = nurseSelect.value;
+    if (!nurseId) {
+      alert("Please choose a registered nurse from the dropdown first!");
+      nurseSelect.focus();
+      return;
+    }
+    const start = document.getElementById('start_date').value.trim();
+    const end = document.getElementById('end_date').value.trim();
+
+    let exportUrl = `{% url 'export_report' %}?type=single_nurse&nurse_id=${nurseId}&format=${fmt}`;
+    if (start && end) {
+      exportUrl += `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    }
+    window.location.href = exportUrl;
+  }
+
+  // Real-time Table Filter
+  function filterCallTable() {
+    const query = document.getElementById('tableSearch').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#callsTable tbody tr.call-row');
+    rows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      if (!query || text.includes(query)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+</script>
+{% endblock %}

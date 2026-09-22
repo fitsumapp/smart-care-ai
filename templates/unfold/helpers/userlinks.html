@@ -1,0 +1,97 @@
+{% load i18n static unfold %}
+
+<div class="flex flex-row gap-2.5 items-center ml-auto">
+    {% if environment %}
+        {% include "unfold/helpers/label.html" with text=environment.0 type=environment.1 %}
+    {% endif %}
+
+    {% action_list %}
+
+    {% if nav_global_side %}
+        {{ nav_global_side }}
+    {% endif %}
+
+    <!-- Theme Toggle (Sun Icon) -->
+    <button type="button" 
+            class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-200/60"
+            x-on:click="switchTheme(adminTheme === 'dark' ? 'light' : 'dark')"
+            title="Toggle theme">
+        <span class="material-symbols-outlined text-xl transition-transform hover:rotate-12" x-text="adminTheme === 'dark' ? 'dark_mode' : 'light_mode'">light_mode</span>
+    </button>
+
+    <!-- User Account Menu (Person Icon) -->
+    <div class="relative" x-data="{ userDropdownOpen: false }" x-on:click.outside="userDropdownOpen = false">
+        <button type="button" 
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-200/60"
+                x-on:click="userDropdownOpen = !userDropdownOpen"
+                title="Account menu">
+            <span class="material-symbols-outlined text-2xl">person</span>
+        </button>
+
+        <!-- Dropdown Menu Card -->
+        <div x-cloak 
+             x-show="userDropdownOpen" 
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 transform scale-95 -translate-y-1"
+             x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 transform scale-100 translate-y-0"
+             x-transition:leave-end="opacity-0 transform scale-95 -translate-y-1"
+             class="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 dark:border-slate-800 py-2 z-50 text-sm">
+            
+            <!-- User Info Header -->
+            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shadow-blue-500/20" style="background: #0066cc;">
+                    {{ request.user.get_username|slice:":1"|upper }}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold text-slate-900 dark:text-white truncate text-[14px]">
+                        {{ request.user.get_full_name|default:request.user.get_username }}
+                    </div>
+                    <div class="text-xs text-slate-400 truncate">
+                        {% if request.user.is_superuser %}Supervisor Admin{% else %}Clinical User{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="py-1">
+                {% if user.has_usable_password %}
+                    <a href="{% url 'admin:password_change' %}" 
+                       class="group flex items-center gap-2.5 px-4 py-2.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors font-medium">
+                        <span class="material-symbols-outlined text-lg text-slate-400 group-hover:text-blue-600 transition-colors">lock_reset</span>
+                        <span>{% trans "Change password" %}</span>
+                    </a>
+                {% endif %}
+
+                <a href="{% url 'admin_reports' %}" 
+                   class="group flex items-center gap-2.5 px-4 py-2.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors font-medium">
+                    <span class="material-symbols-outlined text-lg text-slate-400 group-hover:text-blue-600 transition-colors">assessment</span>
+                    <span>{% trans "Clinical Reports Audit" %}</span>
+                </a>
+
+                {% if site_url %}
+                    <a href="{{ site_url }}" target="_blank"
+                       class="group flex items-center gap-2.5 px-4 py-2.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors font-medium">
+                        <span class="material-symbols-outlined text-lg text-slate-400 group-hover:text-blue-600 transition-colors">open_in_new</span>
+                        <span>{% trans "View site" %}</span>
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Logout Action -->
+            <div class="border-t border-slate-100 dark:border-slate-800 pt-1">
+                <form id="header-logout-form" method="post" action="{% url 'admin:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="group w-full flex items-center justify-between px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-medium cursor-pointer">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-lg text-red-500 group-hover:translate-x-0.5 transition-transform">logout</span>
+                            <span>{% trans "Log out" %}</span>
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

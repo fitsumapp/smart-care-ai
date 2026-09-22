@@ -1,0 +1,1357 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Nurse Dashboard | AI Nurse Call</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --main-blue: #0f172a;
+            --accent-blue: #38bdf8;
+            --on-way-blue: #38bdf8;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f4f7f9;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .nav-header {
+            background: var(--main-blue);
+            color: #f8fafc;
+            padding: 12px 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .monitoring-rooms-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            color: #ffffff;
+            font-size: 13.5px;
+            letter-spacing: 0.01em;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            white-space: nowrap;
+        }
+
+        .monitoring-label {
+            color: #bae6fd;
+            font-weight: 500;
+        }
+
+        .monitoring-range {
+            color: #ffffff;
+            font-weight: 800;
+            background: rgba(56, 189, 248, 0.22);
+            padding: 2px 9px;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            letter-spacing: 0.03em;
+        }
+
+        .dashboard-main-container {
+            flex: 1 1 auto;
+            width: 100%;
+            padding: 10px 14px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .room-grid {
+            display: grid;
+            gap: 10px;
+            width: 100%;
+            flex: 1 1 auto;
+            box-sizing: border-box;
+            align-content: stretch;
+            justify-content: stretch;
+        }
+
+        .room-card {
+            background: white;
+            border: 3.5px solid #dee2e6;
+            border-radius: 12px;
+            padding: 6px 8px;
+            text-align: center;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            container-type: inline-size;
+            box-sizing: border-box;
+            min-height: 96px;
+            overflow: visible;
+        }
+
+        .p-1 {
+            border-color: #ff0000 !important;
+            background-color: #fff5f5 !important;
+        }
+
+        .p-2 {
+            border-color: #ffc107 !important;
+            background-color: #fffdf0 !important;
+        }
+
+        .p-3 {
+            border-color: #28a745 !important;
+            background-color: #f8fff9 !important;
+        }
+
+        .room-num {
+            font-size: clamp(17px, 14cqw, 32px);
+            font-weight: 800;
+            color: #1e293b;
+            line-height: 1.1;
+            margin-top: 2px;
+        }
+
+        .room-card .text-muted {
+            font-size: clamp(9px, 6cqw, 12px);
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: #64748b !important;
+        }
+
+        .bed-list {
+            margin-top: 3px;
+            min-height: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .bed-badge {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: clamp(9px, 5cqw, 12px);
+            font-weight: 700;
+            margin: 1px;
+            display: inline-block;
+            color: #334155;
+            line-height: 1.1;
+        }
+
+        /* ---- Critical (Red pulsing) ---- */
+        .emergency-critical {
+            background: #ff0000 !important;
+            border-color: #b30000 !important;
+            animation: pulse-red 1s infinite !important;
+        }
+
+        .emergency-critical .room-num,
+        .emergency-critical .text-muted,
+        .emergency-critical .bed-badge {
+            color: white !important;
+        }
+
+        .emergency-critical .bed-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        /* ---- AI Fall (Deep Crimson Rapid Flash) ---- */
+        .emergency-ai-fall {
+            background: #b91c1c !important;
+            border-color: #7f1d1d !important;
+            animation: pulse-ai-fall 0.75s infinite !important;
+        }
+
+        .emergency-ai-fall .room-num,
+        .emergency-ai-fall .text-muted,
+        .emergency-ai-fall .bed-badge {
+            color: white !important;
+        }
+
+        /* ---- AI Tremor (Amber Flash) ---- */
+        .emergency-ai-tremor {
+            background: #ea580c !important;
+            border-color: #9a3412 !important;
+            animation: pulse-yellow 1s infinite !important;
+        }
+
+        .emergency-ai-tremor .room-num,
+        .emergency-ai-tremor .text-muted,
+        .emergency-ai-tremor .bed-badge {
+            color: white !important;
+        }
+
+        .ai-badge {
+            background: #ffffff;
+            color: #b91c1c;
+            border-radius: 4px;
+            font-size: max(9px, 5.5cqw);
+            font-weight: 800;
+            padding: 2px 6px;
+            display: inline-block;
+            margin: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* ---- Urgent (Yellow pulsing) ---- */
+        .emergency-urgent {
+            background: #f39c12 !important;
+            border-color: #d68910 !important;
+            animation: pulse-yellow 1s infinite !important;
+        }
+
+        .emergency-urgent .room-num,
+        .emergency-urgent .text-muted,
+        .emergency-urgent .bed-badge {
+            color: white !important;
+        }
+
+        .emergency-urgent .bed-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        /* ---- Normal (Green pulsing) ---- */
+        .emergency-normal {
+            background: #28a745 !important;
+            border-color: #1e7e34 !important;
+            animation: pulse-green 1s infinite !important;
+        }
+
+        .emergency-normal .room-num,
+        .emergency-normal .text-muted,
+        .emergency-normal .bed-badge {
+            color: white !important;
+        }
+
+        .emergency-normal .bed-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        /* ---- Acknowledged (Blue) ---- */
+        .acknowledged {
+            background-color: var(--on-way-blue) !important;
+            border-color: #004085 !important;
+            color: white !important;
+        }
+
+        .acknowledged .room-num,
+        .acknowledged .text-muted,
+        .acknowledged .bed-badge {
+            color: white !important;
+        }
+
+        .acknowledged .bed-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        @keyframes pulse-ai-fall {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(185, 28, 28, 0);
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 35px rgba(220, 38, 38, 0.95);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(185, 28, 28, 0);
+            }
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(255, 0, 0, 0);
+            }
+
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(255, 0, 0, 0);
+            }
+        }
+
+        @keyframes pulse-yellow {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(243, 156, 18, 0);
+            }
+
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 0 30px rgba(243, 156, 18, 0.8);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(243, 156, 18, 0);
+            }
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(40, 167, 69, 0);
+            }
+
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 0 30px rgba(40, 167, 69, 0.8);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0px rgba(40, 167, 69, 0);
+            }
+        }
+
+        /* ---- Priority buttons ---- */
+        .priority-controls {
+            margin-top: auto;
+            padding-top: 4px;
+            display: flex;
+            gap: 3px;
+            width: 100%;
+        }
+
+        .priority-btn {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 3px 2px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: clamp(8px, 4.5cqw, 11px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #fff;
+            color: #475569;
+            line-height: 1.1;
+            text-align: center;
+        }
+
+        .btn-short {
+            display: none;
+        }
+        .btn-full {
+            display: inline;
+        }
+
+        @container (max-width: 125px) {
+            .btn-short { display: inline; }
+            .btn-full { display: none; }
+            .priority-btn { padding: 2px 1px; font-size: 8.5px; }
+        }
+
+        /* Footer */
+        .nurse-footer {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .nurse-footer-text {
+            font-size: 12px !important;
+            color: #64748b !important;
+            margin: 0 !important;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .priority-btn.active-critical {
+            background: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        .priority-btn.active-urgent {
+            background: #f39c12;
+            color: white;
+            border-color: #f39c12;
+        }
+
+        .priority-btn.active-normal {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        /* ---- Special Popup ---- */
+        #specialPopup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #specialContent {
+            padding: 60px 100px;
+            border-radius: 40px;
+            text-align: center;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+            max-width: 800px;
+            width: 90%;
+            border: 8px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            animation: modal-pop 0.5s ease-out;
+        }
+
+        @keyframes modal-pop {
+            0% {
+                transform: scale(0.8) translateY(50px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .special-emergency #specialContent {
+            background: linear-gradient(135deg, #ff1744, #b71c1c);
+            box-shadow: 0 0 80px rgba(255, 23, 68, 0.5);
+            animation: pulse-red-glow 2s infinite;
+        }
+
+        .special-regular #specialContent {
+            background: linear-gradient(135deg, #00c853, #1b5e20);
+            box-shadow: 0 0 80px rgba(0, 200, 83, 0.4);
+        }
+
+        @keyframes pulse-red-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 40px rgba(255, 23, 68, 0.4);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            50% {
+                box-shadow: 0 0 100px rgba(255, 23, 68, 0.8);
+                border-color: rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        .special-room-name {
+            font-size: 8rem;
+            font-weight: 950;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .special-call-type {
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            opacity: .9;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .special-hint {
+            font-size: 1.4rem;
+            margin-top: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px 35px;
+            border-radius: 20px;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #specialPopup.minimized {
+            width: 450px;
+            height: auto;
+            top: 30px;
+            left: auto;
+            right: 30px;
+            background: none;
+            backdrop-filter: none;
+            justify-content: flex-end;
+            align-items: flex-start;
+        }
+
+        #specialPopup.minimized #specialContent {
+            padding: 25px 40px;
+            width: 100%;
+            border-radius: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-width: 4px;
+            animation: none;
+        }
+
+        #specialPopup.minimized .special-room-name {
+            font-size: 3.5rem;
+        }
+
+        #specialPopup.minimized .special-call-type {
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+        }
+
+        #specialPopup.minimized .special-hint {
+            font-size: 1rem;
+            margin-top: 15px;
+            padding: 8px 15px;
+        }
+
+        /* ---- AI Vision Safety Corner Alert Box ---- */
+        #aiCornerContainer {
+            position: fixed;
+            top: 85px;
+            right: 25px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 380px;
+            max-width: 92vw;
+            pointer-events: none;
+        }
+
+        .ai-corner-alert {
+            pointer-events: auto;
+            border-radius: 16px;
+            padding: 15px 18px;
+            color: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            animation: popUpSmooth 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .ai-corner-alert.fall {
+            background: linear-gradient(135deg, rgba(185, 28, 28, 0.96), rgba(220, 38, 38, 0.96));
+            animation: popUpSmooth 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards, cornerPulseRed 2.2s infinite ease-in-out;
+        }
+
+        .ai-corner-alert.tremor {
+            background: linear-gradient(135deg, rgba(194, 65, 12, 0.96), rgba(234, 88, 12, 0.96));
+            animation: popUpSmooth 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards, cornerPulseOrange 2.2s infinite ease-in-out;
+        }
+
+        .ai-alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+            padding-bottom: 5px;
+        }
+
+        .ai-alert-badge-live {
+            background: #ffffff;
+            color: #b91c1c;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ai-alert-body {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 4px 0;
+        }
+
+        .ai-alert-icon {
+            font-size: 2.2rem;
+            line-height: 1;
+        }
+
+        .ai-alert-location {
+            font-size: 1.3rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .ai-alert-type {
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0.95;
+        }
+
+        .ai-alert-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2px;
+        }
+
+        .ai-ack-btn {
+            background: #ffffff;
+            color: #b91c1c;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .ai-corner-alert.tremor .ai-ack-btn {
+            color: #c2410c;
+        }
+
+        .ai-ack-btn:hover {
+            transform: scale(1.04);
+            background: #f8fafc;
+        }
+
+        @keyframes popUpSmooth {
+            0% {
+                opacity: 0;
+                transform: translateY(18px) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes cornerPulseRed {
+            0%, 100% { box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4); }
+            50% { box-shadow: 0 12px 35px rgba(239, 68, 68, 0.85); }
+        }
+
+        @keyframes cornerPulseOrange {
+            0%, 100% { box-shadow: 0 8px 25px rgba(234, 88, 12, 0.4); }
+            50% { box-shadow: 0 12px 35px rgba(249, 115, 22, 0.85); }
+        }
+
+        .form-switch .form-check-input {
+            width: 3em;
+            height: 1.5em;
+            cursor: pointer;
+        }
+
+        /* Debug bar */
+        #dbg {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #0f0;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body onkeydown="handleEnter(event)">
+
+    <!-- Corner Container for AI Fall & Tremor Alerts -->
+    <div id="aiCornerContainer"></div>
+
+    <div id="specialPopup">
+        <div id="specialContent">
+            <div class="special-call-type" id="specialTypeText">EMERGENCY CALL</div>
+            <div class="special-room-name" id="specialRoomName">ER6</div>
+            <div class="special-hint">Press <strong>ENTER</strong> to Acknowledge</div>
+        </div>
+    </div>
+
+    <audio id="alertSound" src="{% static 'sounds/alert.mp3' %}" preload="auto"></audio>
+
+    <div class="nav-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center">
+            <h2 class="m-0 fw-bold text-white fs-4 text-nowrap">🏥 {{ station_name }}</h2>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-center flex-grow-1 mx-2">
+            <div class="monitoring-rooms-pill">
+                <span class="monitoring-label">Monitoring Rooms:</span>
+                <strong class="monitoring-range">{{ start_room }} - {{ end_room }}</strong>
+            </div>
+        </div>
+
+        <div class="text-end d-flex align-items-center flex-shrink-0">
+            <button id="connectSerialBtn" class="btn btn-sm btn-info fw-bold text-white me-3" onclick="connectSerial()">
+                🔌 Connect NFC
+            </button>
+            <div class="form-check form-switch me-4 d-flex align-items-center m-0">
+                <input class="form-check-input me-2" type="checkbox" id="soundSwitch" checked onchange="toggleSound()">
+                <label class="form-check-label text-white fw-bold small text-nowrap" for="soundSwitch" id="soundLabel">🔊 SOUND ON</label>
+            </div>
+            <div>
+                <a href="{% url 'logout_view' %}" class="btn btn-sm btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-main-container" id="dashboardContainer">
+        <div class="room-grid" id="grid">
+            {% for room in room_data_list %}
+            <div class="room-card p-{{ room.priority }}" id="room-{{ room.number|slugify }}"
+                data-room="{{ room.number }}">
+                <div class="card-top">
+                    <span class="card-label">Room</span>
+                    <div class="room-num">{{ room.number }}</div>
+                    <div class="bed-list" id="beds-{{ room.number|slugify }}"></div>
+                </div>
+                <div class="priority-controls">
+                    <button
+                        class="priority-btn p-btn-{{ room.number|slugify }} {% if room.priority == '1' %}active-critical{% endif %}"
+                        data-priority="1"
+                        onclick="updatePriority('{{ room.number }}','1')">
+                        <span class="btn-full">Critical</span><span class="btn-short">Crit</span>
+                    </button>
+                    <button
+                        class="priority-btn p-btn-{{ room.number|slugify }} {% if room.priority == '2' %}active-urgent{% endif %}"
+                        data-priority="2"
+                        onclick="updatePriority('{{ room.number }}','2')">
+                        <span class="btn-full">Urgent</span><span class="btn-short">Urg</span>
+                    </button>
+                    <button
+                        class="priority-btn p-btn-{{ room.number|slugify }} {% if room.priority == '3' %}active-normal{% endif %}"
+                        data-priority="3"
+                        onclick="updatePriority('{{ room.number }}','3')">
+                        <span class="btn-full">Normal</span><span class="btn-short">Norm</span>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Debug bar -->
+    <div id="dbg">Active: <span id="dbg-a">0</span> | Shown: <span id="dbg-s">0</span></div>
+
+    <script>
+        'use strict';
+        let activeCalls = [];
+        let isLooping = false;
+        let isSoundEnabled = true;
+
+        /* ── autoScaleGrid: Full Screen Responsive Expansion ── */
+        function autoScaleGrid() {
+            const grid = document.getElementById('grid');
+            if (!grid) return;
+            const cards = grid.querySelectorAll('.room-card');
+            const count = cards.length;
+            if (count === 0) return;
+
+            const container = document.getElementById('dashboardContainer') || grid.parentElement;
+            const cStyles = window.getComputedStyle(container);
+            const padX = (parseFloat(cStyles.paddingLeft) || 14) + (parseFloat(cStyles.paddingRight) || 14);
+            const padY = (parseFloat(cStyles.paddingTop) || 10) + (parseFloat(cStyles.paddingBottom) || 10);
+
+            const W = container.clientWidth - padX;
+            const H = container.clientHeight - padY;
+            const gap = 10;
+            const minCardHeight = 96;
+            const minCardWidth = 88;
+
+            let bestCols = 1;
+            let bestRows = count;
+            let bestScore = -Infinity;
+
+            let canFitOnScreen = false;
+            for (let c = 1; c <= count; c++) {
+                const r = Math.ceil(count / c);
+                const ch = (H - (r - 1) * gap) / r;
+                const cw = (W - (c - 1) * gap) / c;
+                if (ch >= minCardHeight && cw >= minCardWidth) {
+                    canFitOnScreen = true;
+                    break;
+                }
+            }
+
+            for (let cols = 1; cols <= count; cols++) {
+                const rows = Math.ceil(count / cols);
+                const cellWidth = (W - (cols - 1) * gap) / cols;
+                const cellHeight = (H - (rows - 1) * gap) / rows;
+
+                if (cellWidth < minCardWidth) continue;
+
+                let score;
+                if (canFitOnScreen) {
+                    if (cellHeight < minCardHeight) continue;
+                    const ratio = cellWidth / cellHeight;
+                    const ratioPenalty = Math.abs(ratio - 1.1);
+                    const emptySlotsPenalty = (cols * rows - count) * 0.03;
+                    score = -(ratioPenalty + emptySlotsPenalty);
+                } else {
+                    score = -Math.abs(cellWidth - 130);
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCols = cols;
+                    bestRows = rows;
+                }
+            }
+
+            // Always expand to 100% full screen width - zero gaps on sides
+            grid.style.gridTemplateColumns = `repeat(${bestCols}, minmax(0, 1fr))`;
+            grid.style.width = '100%';
+            grid.style.gap = `${gap}px`;
+
+            if (canFitOnScreen) {
+                grid.style.gridTemplateRows = `repeat(${bestRows}, minmax(0, 1fr))`;
+                grid.style.height = '100%';
+                container.style.overflowY = 'hidden';
+            } else {
+                grid.style.gridTemplateRows = `repeat(${bestRows}, minmax(${minCardHeight}px, auto))`;
+                grid.style.height = 'auto';
+                container.style.overflowY = 'auto';
+            }
+        }
+
+        window.addEventListener('resize', autoScaleGrid);
+        window.addEventListener('DOMContentLoaded', autoScaleGrid);
+        window.addEventListener('load', autoScaleGrid);
+        if (document.fonts) document.fonts.ready.then(autoScaleGrid);
+
+        /* ── helpers ─────────────────────────────────────────── */
+        function slugify(t) {
+            return String(t).toLowerCase()
+                .replace(/\s+/g, '-').replace(/[^\w\-]+/g, '')
+                .replace(/\-\-+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        function stopAllSounds() {
+            const s = document.getElementById('alertSound');
+            s.pause(); s.currentTime = 0;
+            window.speechSynthesis.cancel();
+        }
+
+        function toggleSound() {
+            const sw = document.getElementById('soundSwitch');
+            isSoundEnabled = sw.checked;
+            const label = document.getElementById('soundLabel');
+            
+            if (isSoundEnabled) {
+                label.innerHTML = '<span class="text-info">🔊 SOUND ON</span>';
+                // Unlock HTML5 Audio
+                const s = document.getElementById('alertSound');
+                s.play().then(() => {
+                    s.pause();
+                    s.currentTime = 0;
+                }).catch(e => console.log("Audio unlock failed:", e));
+
+                // Unlock Speech Synthesis
+                if ('speechSynthesis' in window) {
+                    const silentUtterance = new SpeechSynthesisUtterance(' ');
+                    silentUtterance.volume = 0;
+                    window.speechSynthesis.speak(silentUtterance);
+                }
+            } else {
+                label.innerHTML = '<span class="text-muted">🔇 SOUND OFF</span>';
+                stopAllSounds();
+            }
+        }
+
+        /* ── Triage staggering: CLIENT-SIDE TIMER ─────────────────
+           When concurrent calls arrive, we note the moment the
+           FIRST (highest-priority) call becomes visible, then delay
+           lower-priority calls by exact wall-clock seconds.
+    
+           "Concurrent" = two calls whose server-side durations
+           differ by ≤ 3 seconds at the time of detection.
+    
+           Rules:
+             Critical (1)  → show immediately, record firstCriticalAt
+             Urgent   (2)  → if concurrent Critical: show 2 s after firstCriticalAt
+             Normal   (3)  → if concurrent C+U: show 4 s after firstCriticalAt
+                              if concurrent C or U: show 2 s after firstCriticalAt
+                              else: show immediately
+        ────────────────────────────────────────────────────────── */
+        let firstCriticalSeenAt = null;   // wall-clock ms
+        let firstUrgentSeenAt = null;
+
+        function getVisibleCalls(calls) {
+            const now = Date.now();
+
+            // --- determine concurrency (using server duration diff ≤ 3 s) ---
+            const unack = calls.filter(c => !c.is_acknowledged);
+            const hasConcurrentC = unack.filter(c => c.priority === '1').length > 0;
+            const hasConcurrentU = unack.filter(c => c.priority === '2').length > 0;
+
+            // If there IS a Critical call, track when we first noticed it
+            if (hasConcurrentC && firstCriticalSeenAt === null) {
+                firstCriticalSeenAt = now;
+            }
+            if (hasConcurrentU && firstUrgentSeenAt === null) {
+                firstUrgentSeenAt = now;
+            }
+            // Reset timers when all calls of that priority are gone
+            if (!hasConcurrentC) firstCriticalSeenAt = null;
+            if (!hasConcurrentU) firstUrgentSeenAt = null;
+
+            return calls.filter(call => {
+                if (call.is_acknowledged) return true;
+                if (call.priority === '1') return true;   // Critical: always immediate
+
+                // Check if this call is concurrent with a higher-priority call
+                // (server durations differ by ≤ 3 s)
+                const isConC = hasConcurrentC && unack.some(c =>
+                    c.priority === '1' && Math.abs(c.duration - call.duration) <= 3
+                );
+                const isConU = hasConcurrentU && unack.some(c =>
+                    c.priority === '2' && c.id !== call.id &&
+                    Math.abs(c.duration - call.duration) <= 3
+                );
+
+                if (call.priority === '2') {
+                    if (!isConC) return true;  // not concurrent → show immediately
+                    // concurrent Critical: wait 2 s from when Critical first appeared
+                    return firstCriticalSeenAt !== null && (now - firstCriticalSeenAt) >= 2000;
+                }
+
+                if (call.priority === '3') {
+                    if (!isConC && !isConU) return true;  // isolated → show immediately
+                    const ref = firstCriticalSeenAt || firstUrgentSeenAt;
+                    if (!ref) return true;
+                    const delay = (isConC && isConU) ? 4000 : 2000;
+                    return (now - ref) >= delay;
+                }
+
+                return true;
+            });
+        }
+
+        /* ── refreshDashboard ────────────────────────────────── */
+        function refreshDashboard() {
+            fetch('/api/calls/')
+                .then(r => r.json())
+                .then(data => {
+                    activeCalls = data;
+                    document.getElementById('dbg-a').innerText = activeCalls.length;
+                    renderUI();
+
+                    // Special popup (ER/OR)
+                    const sp = activeCalls.find(c => c.is_special_call && !c.is_acknowledged);
+                    const popup = document.getElementById('specialPopup');
+                    if (sp) {
+                        document.getElementById('specialRoomName').innerText = sp.room;
+                        const isEmg = sp.call_type === 'Emergency';
+                        document.getElementById('specialTypeText').innerText = isEmg ? 'EMERGENCY CALL' : 'REGULAR CALL';
+                        const hasOther = activeCalls.some(c => !c.is_special_call && !c.is_acknowledged);
+                        popup.className = (isEmg ? 'special-emergency' : 'special-regular') + (hasOther ? ' minimized' : '');
+                        popup.style.display = 'flex';
+                    } else {
+                        popup.style.display = 'none';
+                    }
+
+                    // Render AI Safety Corner Alerts
+                    renderAICornerAlerts();
+                })
+                .catch(() => { });
+        }
+
+        /* ── renderAICornerAlerts ─────────────────────────────── */
+        function renderAICornerAlerts() {
+            const container = document.getElementById('aiCornerContainer');
+            if (!container) return;
+
+            const aiAlerts = activeCalls.filter(c => 
+                (c.call_type === 'AI_FALL' || c.call_type === 'AI_TREMOR') && !c.is_acknowledged
+            );
+
+            if (aiAlerts.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const activeKeys = new Set();
+
+            aiAlerts.forEach(call => {
+                const key = `ai-alert-${slugify(call.room)}`;
+                activeKeys.add(key);
+
+                let card = document.getElementById(key);
+                if (card) {
+                    // Update timer duration in place without re-triggering animation
+                    const durEl = card.querySelector('.ai-duration');
+                    if (durEl) durEl.innerText = `⏱️ ${call.duration}s ago`;
+                } else {
+                    // Create new card once
+                    const isFall = call.call_type === 'AI_FALL';
+                    const cls = isFall ? 'fall' : 'tremor';
+                    const title = isFall ? '🚨 PATIENT FALL DETECTED' : '⚠️ TREMOR / SEIZURE';
+                    
+                    let icon = '📹';
+                    const locType = (call.location_type || '').toUpperCase();
+                    if (locType === 'CORRIDOR') icon = '🏢';
+                    else if (locType === 'STAIRS') icon = '🪜';
+                    else if (locType === 'BATHROOM') icon = '🚻';
+                    else if (locType === 'WAITING_AREA') icon = '🪑';
+                    else if (locType === 'ROOM') icon = '🛏️';
+
+                    const newCard = document.createElement('div');
+                    newCard.id = key;
+                    newCard.className = `ai-corner-alert ${cls}`;
+                    newCard.innerHTML = `
+                        <div class="ai-alert-header">
+                            <span>📹 AI SAFETY MONITOR</span>
+                            <span class="ai-alert-badge-live">● LIVE ALERT</span>
+                        </div>
+                        <div class="ai-alert-body">
+                            <div class="ai-alert-icon">${icon}</div>
+                            <div>
+                                <div class="ai-alert-location">${call.room}</div>
+                                <div class="ai-alert-type">${title}</div>
+                            </div>
+                        </div>
+                        <div class="ai-alert-footer">
+                            <small class="opacity-75 ai-duration">⏱️ ${call.duration}s ago</small>
+                            <button class="ai-ack-btn" onclick="acknowledgeAICall('${call.room}')">
+                                ⚡ Accept (Enter)
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(newCard);
+                }
+            });
+
+            // Remove cleared cards
+            Array.from(container.children).forEach(child => {
+                if (!activeKeys.has(child.id)) {
+                    child.remove();
+                }
+            });
+        }
+
+        /* ── acknowledgeAICall ───────────────────────────────── */
+        async function acknowledgeAICall(room) {
+            try {
+                await fetch('/api/calls/clear/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ room_number: room })
+                });
+                refreshDashboard();
+            } catch (e) {
+                console.error("Failed to acknowledge AI call:", e);
+            }
+        }
+
+        /* ── renderUI ────────────────────────────────────────── */
+        function renderUI() {
+            document.querySelectorAll('.room-card').forEach(card => {
+                card.classList.remove('emergency-critical', 'emergency-urgent', 'emergency-normal', 'emergency-ai-fall', 'emergency-ai-tremor', 'acknowledged');
+                const bl = card.querySelector('.bed-list');
+                if (bl) bl.innerHTML = '';
+            });
+
+            const shown = getVisibleCalls(activeCalls);
+            document.getElementById('dbg-s').innerText = shown.length;
+
+            const roomBeds = {};
+            shown.forEach(call => {
+                const card = document.getElementById(`room-${slugify(call.room)}`);
+                if (!card) return;   // room not in this station's range
+
+                if (call.is_acknowledged) {
+                    card.classList.add('acknowledged');
+                } else {
+                    if (call.call_type === 'AI_FALL') card.classList.add('emergency-ai-fall');
+                    else if (call.call_type === 'AI_TREMOR') card.classList.add('emergency-ai-tremor');
+                    else if (call.priority === '1') card.classList.add('emergency-critical');
+                    else if (call.priority === '2') card.classList.add('emergency-urgent');
+                    else card.classList.add('emergency-normal');
+                }
+
+                const bedEl = document.getElementById(`beds-${slugify(call.room)}`);
+                if (bedEl) {
+                    if (!roomBeds[call.room]) roomBeds[call.room] = new Set();
+                    const key = `${call.bed}_${call.call_type}`;
+                    if (!roomBeds[call.room].has(key)) {
+                        if (call.call_type === 'AI_FALL') {
+                            bedEl.innerHTML += `<span class="ai-badge">🚨 AI FALL</span>`;
+                        } else if (call.call_type === 'AI_TREMOR') {
+                            bedEl.innerHTML += `<span class="ai-badge" style="color:#ea580c;">⚠️ AI TREMOR</span>`;
+                        } else {
+                            let bedText = call.bed.toUpperCase();
+                            if (bedText === 'GENERAL' || bedText === 'SPECIAL') bedText = 'CALL';
+                            bedEl.innerHTML += `<span class="bed-badge">${bedText}</span>`;
+                        }
+                        roomBeds[call.room].add(key);
+                    }
+                }
+            });
+
+            const urgent = shown.filter(c => !c.is_acknowledged);
+            if (urgent.length > 0 && !isLooping) runEmergencyLoop();
+            else if (urgent.length === 0) stopAllSounds();
+        }
+
+        /* ── runEmergencyLoop ────────────────────────────────── */
+        async function runEmergencyLoop() {
+            if (isLooping) return;
+            isLooping = true;
+            const sound = document.getElementById('alertSound');
+
+            while (true) {
+                const visible = getVisibleCalls(activeCalls).filter(c => !c.is_acknowledged);
+                if (visible.length === 0) break;
+
+                if (isSoundEnabled) {
+                    try { sound.currentTime = 0; await sound.play(); } catch (e) { }
+                    await new Promise(r => setTimeout(r, 1800));
+                    sound.pause();
+
+                    const msg = 'Attention. ' + visible.map(c => {
+                        if (c.call_type === 'AI_FALL') return `Emergency. Room ${c.room} fall detected.`;
+                        if (c.call_type === 'AI_TREMOR') return `Urgent. Room ${c.room} tremor detected.`;
+                        const bedLower = String(c.bed).toLowerCase();
+                        let bedStr = '';
+                        if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
+                            bedStr = bedLower.includes('bed') ? ` ${c.bed}` : ` Bed ${c.bed}`;
+                        }
+                        return `Room ${c.room}${bedStr} is calling.`;
+                    }).join(' ');
+
+                    await new Promise(resolve => {
+                        const ut = new SpeechSynthesisUtterance(msg);
+                        ut.rate = 0.9;
+                        ut.onend = resolve; ut.onerror = resolve;
+                        window.speechSynthesis.speak(ut);
+                    });
+                } else {
+                    await new Promise(r => setTimeout(r, 1800));
+                }
+                await new Promise(r => setTimeout(r, 800));
+            }
+            isLooping = false;
+        }
+
+        /* ── acknowledgeFirstCall (Enter key) ────────────────── */
+        async function acknowledgeFirstCall() {
+            try {
+                const res = await fetch('/api/calls/');
+                const data = await res.json();
+                const visible = getVisibleCalls(data)
+                    .filter(c => !c.is_acknowledged)
+                    .sort((a, b) => Number(a.priority) - Number(b.priority));
+                if (visible.length === 0) return;
+
+                await fetch('/api/calls/clear/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ room_number: visible[0].room })
+                });
+                refreshDashboard();
+            } catch (e) { console.error(e); }
+        }
+
+        /* ── handleEnter ─────────────────────────────────────── */
+        function handleEnter(event) {
+            if (event.key !== 'Enter') return;
+            const popup = document.getElementById('specialPopup');
+            if (popup && popup.style.display !== 'none') {
+                const room = document.getElementById('specialRoomName').innerText;
+                fetch('/api/calls/clear/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ room_number: room })
+                }).then(() => refreshDashboard());
+                return;
+            }
+
+            // Acknowledge active AI corner alert if present
+            const activeAI = activeCalls.find(c => (c.call_type === 'AI_FALL' || c.call_type === 'AI_TREMOR') && !c.is_acknowledged);
+            if (activeAI) {
+                acknowledgeAICall(activeAI.room);
+                return;
+            }
+
+            acknowledgeFirstCall();
+        }
+
+        /* ── updatePriority ──────────────────────────────────── */
+        function updatePriority(room, p) {
+            const card = document.getElementById(`room-${slugify(room)}`);
+            if (card) {
+                card.classList.remove('p-1', 'p-2', 'p-3');
+                card.classList.add(`p-${p}`);
+                document.querySelectorAll(`.p-btn-${slugify(room)}`).forEach(b =>
+                    b.classList.remove('active-critical', 'active-urgent', 'active-normal')
+                );
+                const label = p === '1' ? 'critical' : (p === '2' ? 'urgent' : 'normal');
+                const cls = p === '1' ? 'active-critical' : (p === '2' ? 'active-urgent' : 'active-normal');
+                const btn = Array.from(document.querySelectorAll(`.p-btn-${slugify(room)}`))
+                    .find(b => b.dataset.priority === String(p) || b.innerText.toLowerCase().includes(label));
+                if (btn) btn.classList.add(cls);
+            }
+            fetch('/api/update-priority/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ room_number: room, priority: p })
+            }).then(() => refreshDashboard());
+        }
+
+        /* ── start ───────────────────────────────────────────── */
+        setInterval(refreshDashboard, 800);
+        refreshDashboard();
+
+        /* ── Web Serial API (NFC Reader) ─────────────────────── */
+        let port;
+        let reader;
+        let serialConnected = false;
+
+        async function connectSerial() {
+            if (!('serial' in navigator)) {
+                alert("Web Serial API is not supported in this browser. Please use Google Chrome or Edge.");
+                return;
+            }
+
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                serialConnected = true;
+                
+                const btn = document.getElementById('connectSerialBtn');
+                btn.classList.remove('btn-info');
+                btn.classList.add('btn-success');
+                btn.innerHTML = '✅ NFC Connected';
+                
+                readSerialLoop();
+            } catch (e) {
+                console.error("Serial connection error:", e);
+                alert("Failed to connect to the NFC reader.");
+            }
+        }
+
+        async function readSerialLoop() {
+            const decoder = new TextDecoderStream();
+            const inputDone = port.readable.pipeTo(decoder.writable);
+            const inputStream = decoder.readable;
+            reader = inputStream.getReader();
+
+            let buffer = "";
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += value;
+                    const lines = buffer.split('\n');
+                    
+                    if (lines.length > 1) {
+                        for (let i = 0; i < lines.length - 1; i++) {
+                            const line = lines[i].trim();
+                            if (line.startsWith("SCAN:")) {
+                                const uid = line.replace("SCAN:", "").trim();
+                                await handleNFCScan(uid);
+                            }
+                        }
+                        buffer = lines[lines.length - 1];
+                    }
+                }
+            } catch (error) {
+                console.error("Serial read error:", error);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        async function sendSerialMessage(msg) {
+            if (!serialConnected || !port || !port.writable) return;
+            const encoder = new TextEncoder();
+            const writer = port.writable.getWriter();
+            await writer.write(encoder.encode(msg + '\n'));
+            writer.releaseLock();
+        }
+
+        async function handleNFCScan(uid) {
+            try {
+                const res = await fetch('/api/acknowledge_nfc/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ 
+                        uid: uid,
+                        station_name: '{{ station_name }}'
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // Send success to Arduino TFT
+                    sendSerialMessage(`TFT_SUCCESS:${data.nurse_name}`);
+                    refreshDashboard();
+                } else {
+                    // Send error to Arduino TFT
+                    sendSerialMessage('TFT_ERROR');
+                    console.warn("NFC Error:", data.message);
+                }
+            } catch (error) {
+                console.error("NFC API error:", error);
+                sendSerialMessage('TFT_ERROR');
+            }
+        }
+    </script>
+    <footer class="nurse-footer">
+        <p class="nurse-footer-text">© 2026 <span class="fw-bold" style="color: var(--accent-blue);">ACRMA Tech Solution PLC</span>. All Rights Reserved.</p>
+    </footer>
+
+</body>
+
+</html>
