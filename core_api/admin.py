@@ -464,8 +464,8 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 class ExcelReport(AICallLog):
     class Meta:
         proxy = True
-        verbose_name = '📥 Download Excel (CSV Report)'
-        verbose_name_plural = '📥 Download Excel (CSV Report)'
+        verbose_name = 'Download Excel (CSV Report)'
+        verbose_name_plural = 'Download Excel (CSV Report)'
 
 # NOTE: ExcelReport admin registration removed to hide from sidebar.
 # CSV export remains accessible via /export/csv/ URL and the diagnostics page.
