@@ -165,6 +165,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Logging - Errors written to file (Production)
 # ---------------------------------------------------------------
 if not DEBUG:
+    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    os.makedirs(LOGS_DIR, exist_ok=True)
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -172,7 +174,7 @@ if not DEBUG:
             'file': {
                 'level': 'ERROR',
                 'class': 'logging.FileHandler',
-                'filename': os.path.join(BASE_DIR, 'logs', 'django_errors.log'),
+                'filename': os.path.join(LOGS_DIR, 'django_errors.log'),
             },
         },
         'loggers': {
