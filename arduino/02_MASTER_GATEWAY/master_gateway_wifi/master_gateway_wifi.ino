@@ -108,24 +108,31 @@ void setup() {
   Serial.println(F("  MedPulse Smart-Care AI — Master Gateway (Wi-Fi)  "));
   Serial.println(F("=================================================="));
 
-  // Initialize SPI
-  SPI.begin(18, 19, 23, -1);
-
-  // Initialize Chip Selects
+  // Initialize Chip Selects (Keep both unselected initially)
   pinMode(NFC_SS_PIN, OUTPUT);
   digitalWrite(NFC_SS_PIN, HIGH);
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
 
-  // Init RFID
-  rfid.PCD_Init();
+  // Initialize Hardware SPI
+  SPI.begin(18, 19, 23, -1);
 
   // Init TFT
   tft.begin();
   tft.setRotation(0);
   tft.fillScreen(C_VOID);
-
   drawBootSplash();
+
+  // Ensure TFT is deselected before initializing RFID
+  digitalWrite(TFT_CS, HIGH);
+  digitalWrite(NFC_SS_PIN, HIGH);
+
+  // Init RFID
+  rfid.PCD_Init();
+  delay(50);
+  rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
+  byte nfcVer = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  Serial.printf("[NFC HARDWARE] MFRC522 Chip Version: 0x%02X\n", nfcVer);
 
   // Load saved credentials from Flash
   loadConfiguration();
@@ -220,7 +227,7 @@ void loop() {
 
   // 3. Listen for Nurse NFC Card Scan (MFRC522)
   digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, LOW);
+  digitalWrite(NFC_SS_PIN, HIGH);
 
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     String uid = "";
@@ -233,15 +240,12 @@ void loop() {
 
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();
-    digitalWrite(NFC_SS_PIN, HIGH);
 
     sendNfcToCloud(uid);
-  } else {
-    digitalWrite(NFC_SS_PIN, HIGH);
   }
 
-  // 4. Poll Cloud API for Cleared/Reset Calls (every 2.5 seconds)
-  if (now - lastResetCheck > 2500) {
+  // 4. Poll Cloud API for Cleared/Reset Calls (every 5 seconds)
+  if (now - lastResetCheck > 5000) {
     checkCloudResets();
     lastResetCheck = now;
   }

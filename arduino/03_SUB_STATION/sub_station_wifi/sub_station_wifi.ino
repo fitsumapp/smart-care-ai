@@ -106,15 +106,22 @@ void setup() {
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
 
-  // Init RFID
-  rfid.PCD_Init();
-
   // Init TFT
   tft.begin();
   tft.setRotation(0);
   tft.fillScreen(C_VOID);
-
   drawBootSplash();
+
+  // Ensure TFT is deselected before initializing RFID
+  digitalWrite(TFT_CS, HIGH);
+  digitalWrite(NFC_SS_PIN, HIGH);
+
+  // Init RFID
+  rfid.PCD_Init();
+  delay(50);
+  rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
+  byte nfcVer = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  Serial.printf("[NFC HARDWARE] MFRC522 Chip Version: 0x%02X\n", nfcVer);
 
   // Load saved configuration from Flash
   loadConfiguration();
@@ -175,7 +182,7 @@ void loop() {
 
   // 2. Listen for Nurse NFC Card Scan (MFRC522)
   digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, LOW);
+  digitalWrite(NFC_SS_PIN, HIGH);
 
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     String uid = "";
@@ -188,11 +195,8 @@ void loop() {
 
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();
-    digitalWrite(NFC_SS_PIN, HIGH);
 
     sendNfcToCloud(uid);
-  } else {
-    digitalWrite(NFC_SS_PIN, HIGH);
   }
 
   // 3. Send Heartbeat to Cloud API (every 15 seconds)
