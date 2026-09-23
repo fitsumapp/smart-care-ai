@@ -97,6 +97,7 @@ if DB_ENGINE == 'django.db.backends.mysql':
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '3306'),
+            'CONN_MAX_AGE': 0,
             'OPTIONS': {
                 'charset': 'utf8mb4',
                 'init_command': "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",

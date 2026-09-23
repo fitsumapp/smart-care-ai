@@ -331,6 +331,9 @@ def send_escalation_sms(call_id):
                 call.save()
     except Exception as e:
         print(f"Twilio Escalation Error: {e}")
+    finally:
+        from django.db import connection
+        connection.close()
 
 # 4. APIs
 @csrf_exempt
