@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin as BaseGroupAdmin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.utils import timezone
 from unfold.admin import ModelAdmin
@@ -483,7 +484,7 @@ class NurseAdmin(ModelAdmin):
     def display_stations(self, obj):
         stations = obj.stations.all()
         if not stations:
-            return format_html('<span class="text-gray-400">No Station</span>')
+            return mark_safe('<span class="text-gray-400">No Station</span>')
         return ", ".join([s.station_name for s in stations])
 
 # ================================================================
