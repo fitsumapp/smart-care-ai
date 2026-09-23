@@ -43,7 +43,7 @@
 
 // ── Hardware Instances ─────────────────────────────────────────
 MFRC522          rfid(NFC_SS_PIN, NFC_RST_PIN);
-Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
 
 const char STATION_ID[] = "SUB-STATION (NFC)";
 
@@ -68,20 +68,22 @@ void setup() {
   Serial.begin(115200);
   Serial.setTimeout(50);
 
-  // Initialize SPI Bus (VSPI)
-  SPI.begin(18, 19, 23, -1);
-
   // Initialize Chip Selects
   pinMode(NFC_SS_PIN, OUTPUT);
   digitalWrite(NFC_SS_PIN, HIGH);
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
 
-  // Init RFID Reader
-  rfid.PCD_Init();
+  // Initialize SPI Bus (VSPI)
+  SPI.begin(18, 19, 23, -1);
 
-  // Init GC9A01 Round TFT Display
-  tft.begin();
+  // 1. Init RFID Reader
+  rfid.PCD_Init();
+  delay(50);
+  rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
+
+  // 2. Init GC9A01 Round TFT Display (Hardware SPI at 24 MHz)
+  tft.begin(24000000);
   tft.setRotation(0);
   tft.fillScreen(C_VOID);
 
@@ -119,7 +121,7 @@ void loop() {
 
   // 2. NFC CARD SCANNING (MFRC522)
   digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, LOW);
+  digitalWrite(NFC_SS_PIN, HIGH);
 
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     String uid = "";

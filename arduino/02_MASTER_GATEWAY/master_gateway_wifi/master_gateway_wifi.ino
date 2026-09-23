@@ -55,7 +55,7 @@
 // ── Hardware Instances ─────────────────────────────────────────
 HardwareSerial loraSerial(2);  // Serial2
 MFRC522 rfid(NFC_SS_PIN, NFC_RST_PIN);
-Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
 Preferences prefs;
 WebServer webServer(80);
 DNSServer dnsServer;
@@ -117,22 +117,21 @@ void setup() {
   // Initialize Hardware SPI
   SPI.begin(18, 19, 23, -1);
 
-  // Init TFT
-  tft.begin();
-  tft.setRotation(0);
-  tft.fillScreen(C_VOID);
-  drawBootSplash();
-
-  // Ensure TFT is deselected before initializing RFID
-  digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, HIGH);
-
-  // Init RFID
+  // 1. Init RFID (Hardware SPI)
   rfid.PCD_Init();
   delay(50);
   rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
   byte nfcVer = rfid.PCD_ReadRegister(MFRC522::VersionReg);
   Serial.printf("[NFC HARDWARE] MFRC522 Chip Version: 0x%02X\n", nfcVer);
+
+  // Deselect RFID before TFT operations
+  digitalWrite(NFC_SS_PIN, HIGH);
+
+  // 2. Init TFT (Hardware SPI at 24 MHz)
+  tft.begin(24000000);
+  tft.setRotation(0);
+  tft.fillScreen(C_VOID);
+  drawBootSplash();
 
   // Load saved credentials from Flash
   loadConfiguration();
