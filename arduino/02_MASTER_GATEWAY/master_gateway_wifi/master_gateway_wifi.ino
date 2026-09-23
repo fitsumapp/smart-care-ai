@@ -108,6 +108,7 @@ const String STATION_KEY = "medpulse-station-secret-key";
 bool isConfigMode = false;
 bool showingMessage = false;
 volatile bool hasActiveCall = false; // Tracks if a call is actively ringing
+String currentActiveRoom = "";
 unsigned long messageTimer = 0;
 unsigned long pulseTimer = 0;
 uint8_t pulseStep = 0;
@@ -244,12 +245,29 @@ void loop() {
   if (feedbackQueue != NULL && xQueueReceive(feedbackQueue, &fb, 0) == pdTRUE) {
     if (fb.type == FEEDBACK_NFC_GRANTED) {
       showGrantedScreen(fb.nurseName);
+      String roomToReset = String(fb.resetRoom);
+      roomToReset.trim();
+      if (roomToReset.length() == 0 || roomToReset == "null") {
+        roomToReset = currentActiveRoom;
+      }
+      if (roomToReset.length() > 0 && roomToReset != "null") {
+        loraSerial.printf("DONE:%s\n", roomToReset.c_str());
+        Serial.printf("[NFC LORA RESET ➜] DONE:%s\n", roomToReset.c_str());
+        delay(60);
+        loraSerial.printf("DONE:%s\n", roomToReset.c_str());
+        Serial.printf("[NFC LORA RESET (Backup) ➜] DONE:%s\n", roomToReset.c_str());
+      }
+      hasActiveCall = false;
+      currentActiveRoom = "";
     } else if (fb.type == FEEDBACK_NFC_DENIED) {
       showDeniedScreen();
     } else if (fb.type == FEEDBACK_LORA_RESET) {
       loraSerial.printf("DONE:%s\n", fb.resetRoom);
       Serial.printf("[LORA RESET ➜] DONE:%s\n", fb.resetRoom);
+      delay(60);
+      loraSerial.printf("DONE:%s\n", fb.resetRoom);
       hasActiveCall = false;
+      currentActiveRoom = "";
       showIdleScreen();
       showingMessage = false;
     }
@@ -288,6 +306,7 @@ void loop() {
         }
         room.trim();
         bed.trim();
+        currentActiveRoom = room;
 
         // Local UI feedback instantly (< 10ms)
         showCallScreen(room, bed);
@@ -505,10 +524,32 @@ void sendNfcToCloudWorker(const char *uid) {
         int end = res.indexOf("\"", start);
         if (end != -1) nurseName = res.substring(start, end);
       }
+
+      String ackRoom = "";
+      int roomIdx = res.indexOf("\"room\":\"");
+      if (roomIdx != -1) {
+        int start = roomIdx + 8;
+        int end = res.indexOf("\"", start);
+        if (end != -1) ackRoom = res.substring(start, end);
+      } else {
+        int rNumIdx = res.indexOf("\"room\":");
+        if (rNumIdx != -1) {
+          int start = rNumIdx + 7;
+          while (start < res.length() && (res[start] == ' ' || res[start] == '\"')) start++;
+          int end = start;
+          while (end < res.length() && res[end] != ',' && res[end] != '}' && res[end] != '\"' && res[end] != ' ') end++;
+          if (end > start) ackRoom = res.substring(start, end);
+        }
+      }
+      ackRoom.trim();
+
       if (feedbackQueue != NULL) {
         FeedbackEvent fb;
         fb.type = FEEDBACK_NFC_GRANTED;
         strncpy(fb.nurseName, nurseName.c_str(), sizeof(fb.nurseName) - 1);
+        fb.nurseName[sizeof(fb.nurseName) - 1] = '\0';
+        strncpy(fb.resetRoom, ackRoom.c_str(), sizeof(fb.resetRoom) - 1);
+        fb.resetRoom[sizeof(fb.resetRoom) - 1] = '\0';
         xQueueSend(feedbackQueue, &fb, 0);
       }
     } else {
