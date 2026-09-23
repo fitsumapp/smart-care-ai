@@ -1153,26 +1153,32 @@
                     let msg = '';
                     if (ttsLang === 'am') {
                         msg = visible.map(c => {
-                            if (c.call_type === 'AI_FALL') return `አስቸኳይ አደጋ። ክፍል ${c.room} ታካሚ መውደቅ ተገኝቷል።`;
-                            if (c.call_type === 'AI_TREMOR') return `ትኩረት። ክፍል ${c.room} መንቀጥቀጥ ተገኝቷል።`;
+                            if (c.call_type === 'AI_FALL') {
+                                return `ነርስ አስቸኳይ እርዳታ የታካሚ ክፍል ${c.room} አንድ ታካሚ አደጋ ደርሶበታል`;
+                            }
+                            if (c.call_type === 'AI_TREMOR') {
+                                return `ነርስ አስቸኳይ እርዳታ የታካሚ ክፍል ${c.room} ታካሚ ላይ ድንገተኛ መንቀጥቀጥ ደርሶበታል`;
+                            }
                             const bedLower = String(c.bed).toLowerCase();
                             let bedStr = '';
                             if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
-                                const cleanBed = String(c.bed).replace(/bed/i, '').trim();
-                                bedStr = cleanBed ? ` አልጋ ${cleanBed}` : ` ${c.bed}`;
+                                const cleanBed = String(c.bed).replace(/bed/i, '').replace(/ቁጥር/i, '').trim();
+                                if (cleanBed) {
+                                    bedStr = ` አልጋ ቁጥር ${cleanBed}`;
+                                }
                             }
-                            return `ትኩረት። ክፍል ${c.room}${bedStr} ጥሪ እያደረጉ ነው።`;
+                            return `ነርስ የታካሚ ክፍል ${c.room}${bedStr} እርዳታ እየፈለገ ነው`;
                         }).join(' ');
                     } else {
-                        msg = 'Attention. ' + visible.map(c => {
-                            if (c.call_type === 'AI_FALL') return `Emergency. Room ${c.room} fall detected.`;
-                            if (c.call_type === 'AI_TREMOR') return `Urgent. Room ${c.room} tremor detected.`;
+                        msg = 'Attention nurse. ' + visible.map(c => {
+                            if (c.call_type === 'AI_FALL') return `Emergency. Patient room ${c.room} accident detected.`;
+                            if (c.call_type === 'AI_TREMOR') return `Urgent. Patient room ${c.room} tremor detected.`;
                             const bedLower = String(c.bed).toLowerCase();
                             let bedStr = '';
                             if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
                                 bedStr = bedLower.includes('bed') ? ` ${c.bed}` : ` Bed ${c.bed}`;
                             }
-                            return `Room ${c.room}${bedStr} is calling.`;
+                            return `Patient room ${c.room}${bedStr} requires assistance.`;
                         }).join(' ');
                     }
 
@@ -1181,7 +1187,9 @@
                         let finished = false;
                         const done = () => { if (!finished) { finished = true; resolve(); } };
 
-                        const audioUrl = `/api/tts/?text=${encodeURIComponent(msg)}&lang=${ttsLang}`;
+                        // rate=-20% for natural, slow, clear pronunciation
+                        const rateParam = (ttsLang === 'am') ? '-20%' : '-10%';
+                        const audioUrl = `/api/tts/?text=${encodeURIComponent(msg)}&lang=${ttsLang}&rate=${encodeURIComponent(rateParam)}`;
                         const ttsAudio = new Audio(audioUrl);
 
                         ttsAudio.onended = done;
@@ -1189,7 +1197,7 @@
                             try {
                                 const ut = new SpeechSynthesisUtterance(msg);
                                 ut.lang = (ttsLang === 'am') ? 'am-ET' : 'en-US';
-                                ut.rate = 0.9;
+                                ut.rate = 0.8;
                                 ut.onend = done;
                                 ut.onerror = done;
                                 window.speechSynthesis.speak(ut);
@@ -1202,7 +1210,7 @@
                             try {
                                 const ut = new SpeechSynthesisUtterance(msg);
                                 ut.lang = (ttsLang === 'am') ? 'am-ET' : 'en-US';
-                                ut.rate = 0.9;
+                                ut.rate = 0.8;
                                 ut.onend = done;
                                 ut.onerror = done;
                                 window.speechSynthesis.speak(ut);
@@ -1211,7 +1219,7 @@
                             }
                         });
 
-                        setTimeout(done, 12000);
+                        setTimeout(done, 14000);
                     });
                 } else {
                     await new Promise(r => setTimeout(r, 1800));

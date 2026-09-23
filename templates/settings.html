@@ -421,8 +421,8 @@
     async function testTtsVoice(btn) {
         const lang = document.querySelector('input[name="tts_language"]:checked')?.value || 'am';
         const sampleText = (lang === 'am') 
-            ? 'ትኩረት። ክፍል 4 አልጋ 2 ጥሪ እያደረጉ ነው።' 
-            : 'Attention. Room 4 Bed 2 is calling.';
+            ? 'ነርስ የታካሚ ክፍል 1 አልጋ ቁጥር 2 እርዳታ እየፈለገ ነው' 
+            : 'Attention nurse. Patient room 1 Bed 2 requires assistance.';
         
         const originalHtml = btn.innerHTML;
         btn.disabled = true;

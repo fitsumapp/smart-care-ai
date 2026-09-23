@@ -107,6 +107,7 @@ const String STATION_KEY = "medpulse-station-secret-key";
 
 bool isConfigMode = false;
 bool showingMessage = false;
+volatile bool hasActiveCall = false; // Tracks if a call is actively ringing
 unsigned long messageTimer = 0;
 unsigned long pulseTimer = 0;
 uint8_t pulseStep = 0;
@@ -140,6 +141,7 @@ void sendHeartbeatWorker();
 void setup() {
   Serial.begin(115200);
   loraSerial.begin(9600, SERIAL_8N1, LORA_RX_PIN, LORA_TX_PIN);
+  loraSerial.setTimeout(30); // Prevent readStringUntil from blocking Core 1!
 
   Serial.println(F("\n=================================================="));
   Serial.println(F("  MedPulse Smart-Care AI — Master Gateway (Wi-Fi)  "));
@@ -247,6 +249,9 @@ void loop() {
     } else if (fb.type == FEEDBACK_LORA_RESET) {
       loraSerial.printf("DONE:%s\n", fb.resetRoom);
       Serial.printf("[LORA RESET ➜] DONE:%s\n", fb.resetRoom);
+      hasActiveCall = false;
+      showIdleScreen();
+      showingMessage = false;
     }
   }
 
@@ -256,10 +261,10 @@ void loop() {
     incoming.trim();
 
     if (incoming.length() > 0) {
-      // Debounce identical LoRa packets within 3.5 seconds
+      // Debounce identical LoRa packets within 800 milliseconds
       static String lastLoRaMsg = "";
       static unsigned long lastLoRaTime = 0;
-      if (incoming == lastLoRaMsg && (now - lastLoRaTime < 3500)) {
+      if (incoming == lastLoRaMsg && (now - lastLoRaTime < 800)) {
         return;
       }
       lastLoRaMsg = incoming;
@@ -268,6 +273,7 @@ void loop() {
       Serial.printf("[LORA IN] %s\n", incoming.c_str());
 
       if (incoming.startsWith("START:")) {
+        hasActiveCall = true;
         int firstColon = incoming.indexOf(':');
         int secondColon = incoming.indexOf(':', firstColon + 1);
 
@@ -407,8 +413,11 @@ void networkWorkerTask(void *pvParameters) {
 
     now = millis();
 
-    // 3. Fast Cloud Reset Polling (Every 2500ms — ONLY when no urgent events waiting)
-    if ((netQueue == NULL || uxQueueMessagesWaiting(netQueue) == 0) && (now - lastResetCheck > 2500)) {
+    // 3. Ultra-Fast Cloud Reset Polling
+    // If a call is actively ringing, poll every 500ms so dashboard clearance is received immediately!
+    // When idle, poll every 3500ms to save CPU and keep Wi-Fi clear.
+    unsigned long resetInterval = hasActiveCall ? 500 : 3500;
+    if ((netQueue == NULL || uxQueueMessagesWaiting(netQueue) == 0) && (now - lastResetCheck > resetInterval)) {
       checkCloudResetsWorker();
       lastResetCheck = millis();
     }
@@ -438,7 +447,7 @@ void sendCallToCloudWorker(const char *room, const char *bed, const char *action
 
   WiFiClientSecure client;
   client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
-  client.setTimeout(3);
+  client.setTimeout(4000); // 4000ms
 
   HTTPClient http;
   String url = serverUrl + "/api/calls/";
@@ -446,7 +455,7 @@ void sendCallToCloudWorker(const char *room, const char *bed, const char *action
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(3000);
+  http.setTimeout(4000);
 
   String postData = "room_number=" + String(room) + "&bed_number=" + String(bed) + "&action=" + String(action);
   int code = http.POST(postData);
@@ -471,7 +480,7 @@ void sendNfcToCloudWorker(const char *uid) {
 
   WiFiClientSecure client;
   client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
-  client.setTimeout(3);
+  client.setTimeout(4000); // 4000ms
 
   HTTPClient http;
   String url = serverUrl + "/api/acknowledge_nfc/";
@@ -479,7 +488,7 @@ void sendNfcToCloudWorker(const char *uid) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(3000);
+  http.setTimeout(4000);
 
   String payload = "{\"uid\":\"" + String(uid) + "\",\"station_name\":\"" + stationId + "\"}";
   int code = http.POST(payload);
@@ -524,14 +533,14 @@ void checkCloudResetsWorker() {
 
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(2);
+  client.setTimeout(4000); // 4000ms
 
   HTTPClient http;
   String url = serverUrl + "/api/calls/check_reset/?_t=" + String(millis());
   http.begin(client, url);
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(2000);
+  http.setTimeout(4000);
 
   int code = http.GET();
   if (code == 200) {
@@ -546,6 +555,8 @@ void checkCloudResetsWorker() {
       int closeBracket = res.indexOf(']', openBracket);
       if (openBracket != -1 && closeBracket != -1 && closeBracket > openBracket + 1) {
         String arrayContent = res.substring(openBracket + 1, closeBracket);
+        static String lastSentResetRoom = "";
+        static unsigned long lastSentResetTime = 0;
         int from = 0;
         while (from < arrayContent.length()) {
           int q1 = arrayContent.indexOf("\"", from);
@@ -554,11 +565,16 @@ void checkCloudResetsWorker() {
           if (q2 == -1) break;
           String resetRoom = arrayContent.substring(q1 + 1, q2);
           resetRoom.trim();
-          if (resetRoom.length() > 0 && feedbackQueue != NULL) {
-            FeedbackEvent fb;
-            fb.type = FEEDBACK_LORA_RESET;
-            strncpy(fb.resetRoom, resetRoom.c_str(), sizeof(fb.resetRoom) - 1);
-            xQueueSend(feedbackQueue, &fb, 0);
+          unsigned long nowMs = millis();
+          if (resetRoom.length() > 0 && (resetRoom != lastSentResetRoom || (nowMs - lastSentResetTime > 1500))) {
+            lastSentResetRoom = resetRoom;
+            lastSentResetTime = nowMs;
+            if (feedbackQueue != NULL) {
+              FeedbackEvent fb;
+              fb.type = FEEDBACK_LORA_RESET;
+              strncpy(fb.resetRoom, resetRoom.c_str(), sizeof(fb.resetRoom) - 1);
+              xQueueSend(feedbackQueue, &fb, 0);
+            }
           }
           from = q2 + 1;
         }
@@ -572,12 +588,12 @@ void sendHeartbeatWorker() {
   if (WiFi.status() != WL_CONNECTED) return;
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(2);
+  client.setTimeout(4000);
 
   HTTPClient http;
   http.begin(client, serverUrl + "/api/heartbeat/");
   http.addHeader("X-Station-ID", stationId);
-  http.setTimeout(2000);
+  http.setTimeout(4000);
   http.GET();
   http.end();
 }

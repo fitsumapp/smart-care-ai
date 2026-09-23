@@ -323,7 +323,7 @@ void sendNfcToCloudWorker(const char *uid) {
 
   WiFiClientSecure client;
   client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
-  client.setTimeout(3);
+  client.setTimeout(4000); // 4000ms
 
   HTTPClient http;
   String url = serverUrl + "/api/acknowledge_nfc/";
@@ -331,7 +331,7 @@ void sendNfcToCloudWorker(const char *uid) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(3000);
+  http.setTimeout(4000);
 
   String payload = "{\"uid\":\"" + String(uid) + "\",\"station_name\":\"" + stationId + "\"}";
   int code = http.POST(payload);
@@ -375,12 +375,12 @@ void sendHeartbeatWorker() {
   if (WiFi.status() != WL_CONNECTED) return;
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(2);
+  client.setTimeout(4000);
 
   HTTPClient http;
   http.begin(client, serverUrl + "/api/heartbeat/");
   http.addHeader("X-Station-ID", stationId);
-  http.setTimeout(2000);
+  http.setTimeout(4000);
   http.GET();
   http.end();
 }

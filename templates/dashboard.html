@@ -196,14 +196,14 @@
         let currentTtsAudio = null;
 
         function speakCall(roomNumbers) {
-            const message = `ትኩረት። ክፍል ${roomNumbers} ጥሪ እያደረጉ ነው።`;
+            const message = `ነርስ የታካሚ ክፍል ${roomNumbers} እርዳታ እየፈለገ ነው`;
             isSpeaking = true;
             try {
                 if (currentTtsAudio) { currentTtsAudio.pause(); }
-                currentTtsAudio = new Audio(`/api/tts/?text=${encodeURIComponent(message)}&lang=am`);
+                currentTtsAudio = new Audio(`/api/tts/?text=${encodeURIComponent(message)}&lang=am&rate=-20%`);
                 currentTtsAudio.onended = () => { isSpeaking = false; };
                 currentTtsAudio.onerror = () => {
-                    const utterance = new SpeechSynthesisUtterance(`Attention, Room ${roomNumbers} is calling.`);
+                    const utterance = new SpeechSynthesisUtterance(`Attention nurse. Patient room ${roomNumbers} requires assistance.`);
                     utterance.onstart = () => { isSpeaking = true; };
                     utterance.onend = () => { isSpeaking = false; };
                     window.speechSynthesis.speak(utterance);

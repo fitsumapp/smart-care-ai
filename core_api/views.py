@@ -604,11 +604,11 @@ def clear_call_api(request):
                 if action == 'resolve' or is_special:
                     call_qs.update(
                         is_acknowledged=True, acknowledged_at=now,
-                        is_active=False, cleared_at=now
+                        is_active=False, cleared_at=now, is_notified=False
                     )
                 else:
                     call_qs.update(
-                        is_acknowledged=True, acknowledged_at=now
+                        is_acknowledged=True, acknowledged_at=now, is_notified=False
                     )
                 resp = JsonResponse({'status': 'success', 'room': rm})
                 resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
@@ -720,10 +720,19 @@ def acknowledge_nfc_api(request):
 @never_cache
 def check_reset_api(request):
     """ API to check for hardware reset (Arduino) """
+    now = timezone.now()
     ack_calls = AICallLog.objects.filter(is_acknowledged=True, is_notified=False)
     arrived_calls = AICallLog.objects.filter(is_active=True, arrived_at__isnull=False)
+    recent_cleared = AICallLog.objects.filter(
+        cleared_at__gte=now - timedelta(seconds=15),
+        is_acknowledged=True
+    )
     
-    raw_rooms = list(set([c.room_number for c in ack_calls] + [c.room_number for c in arrived_calls]))
+    raw_rooms = list(set(
+        list(ack_calls.values_list('room_number', flat=True)) +
+        list(arrived_calls.values_list('room_number', flat=True)) +
+        list(recent_cleared.values_list('room_number', flat=True))
+    ))
     rooms_to_reset = []
     sp_qs = SpecialRoom.objects.filter(room_name_display__in=raw_rooms)
     sp_map = {sp.room_name_display: sp for sp in sp_qs}
@@ -738,7 +747,7 @@ def check_reset_api(request):
                 rooms_to_reset.append(sp.regular_id)
     
     ack_calls.update(is_notified=True)
-    arrived_calls.update(is_active=False, cleared_at=timezone.now())
+    arrived_calls.update(is_active=False, cleared_at=now)
     
     resp = JsonResponse({
         'reset_rooms': rooms_to_reset,
@@ -1749,12 +1758,17 @@ def tts_api(request):
 
     voice = 'am-ET-MekdesNeural' if lang == 'am' else 'en-US-JennyNeural'
 
+    # Speaking rate: slower rate for natural, calm, easily comprehensible medical alerts
+    rate = request.GET.get('rate', '').strip()
+    if not rate:
+        rate = '-20%' if lang == 'am' else '-10%'
+
     # Cache folder under MEDIA_ROOT
     media_dir = getattr(settings, 'MEDIA_ROOT', None) or os.path.join(settings.BASE_DIR, 'media')
     cache_dir = os.path.join(media_dir, 'tts_cache')
     os.makedirs(cache_dir, exist_ok=True)
 
-    cache_key = hashlib.md5(f"{voice}:{text}".encode('utf-8')).hexdigest()
+    cache_key = hashlib.md5(f"{voice}:{rate}:{text}".encode('utf-8')).hexdigest()
     file_path = os.path.join(cache_dir, f"{cache_key}.mp3")
 
     if not os.path.exists(file_path):
@@ -1764,7 +1778,7 @@ def tts_api(request):
                 import edge_tts as tts_module  # type: ignore
 
             async def _synthesize():
-                comm = tts_module.Communicate(text, voice=voice)
+                comm = tts_module.Communicate(text, voice=voice, rate=rate)
                 await comm.save(file_path)
 
             try:
@@ -1776,7 +1790,7 @@ def tts_api(request):
             if loop.is_running():
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as pool:
-                    pool.submit(lambda: asyncio.run(_synthesize())).result(timeout=10)
+                    pool.submit(lambda: asyncio.run(_synthesize())).result(timeout=15)
             else:
                 loop.run_until_complete(_synthesize())
 
