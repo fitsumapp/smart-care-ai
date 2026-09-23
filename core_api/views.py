@@ -8,6 +8,11 @@ try:
     from twilio.rest import Client  # type: ignore
 except (ImportError, ModuleNotFoundError):
     Client = None
+
+try:
+    import edge_tts  # type: ignore
+except (ImportError, ModuleNotFoundError):
+    edge_tts = None
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
@@ -1754,10 +1759,12 @@ def tts_api(request):
 
     if not os.path.exists(file_path):
         try:
-            import edge_tts
-            
+            tts_module = edge_tts
+            if tts_module is None:
+                import edge_tts as tts_module  # type: ignore
+
             async def _synthesize():
-                comm = edge_tts.Communicate(text, voice=voice)
+                comm = tts_module.Communicate(text, voice=voice)
                 await comm.save(file_path)
 
             try:
