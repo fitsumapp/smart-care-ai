@@ -509,9 +509,10 @@ def call_log_api(request):
             pass
 
     now = timezone.now()
+    special_names = set(SpecialRoom.objects.values_list('room_name_display', flat=True))
     data = []
     for c in active_calls:
-        is_special = SpecialRoom.objects.filter(room_name_display=c.room_number).exists()
+        is_special = c.room_number in special_names
         loc_type = c.location_type or ('ROOM' if str(c.room_number).isdigit() else 'PUBLIC_AREA')
         data.append({
             'id':               c.id,
@@ -713,10 +714,12 @@ def check_reset_api(request):
     
     raw_rooms = list(set([c.room_number for c in ack_calls] + [c.room_number for c in arrived_calls]))
     rooms_to_reset = []
-    
+    sp_qs = SpecialRoom.objects.filter(room_name_display__in=raw_rooms)
+    sp_map = {sp.room_name_display: sp for sp in sp_qs}
+
     for rm in raw_rooms:
         rooms_to_reset.append(rm)
-        sp = SpecialRoom.objects.filter(room_name_display=rm).first()
+        sp = sp_map.get(rm)
         if sp:
             if sp.emergency_id:
                 rooms_to_reset.append(sp.emergency_id)

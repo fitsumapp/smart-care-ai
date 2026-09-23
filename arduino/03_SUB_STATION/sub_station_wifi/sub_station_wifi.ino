@@ -280,7 +280,7 @@ void subNetworkWorkerTask(void *pvParameters) {
     unsigned long now = millis();
 
     // 1. Maintain Wi-Fi
-    if (now - lastWifiCheck > 6000) {
+    if (now - lastWifiCheck > 8000) {
       if (WiFi.status() != WL_CONNECTED && !isConfigMode && wifiSSID.length() > 0) {
         Serial.println(F("[CORE 0] Wi-Fi reconnecting..."));
         WiFi.disconnect();
@@ -289,16 +289,16 @@ void subNetworkWorkerTask(void *pvParameters) {
       lastWifiCheck = now;
     }
 
-    // 2. Process NFC Scan Events from Core 1
+    // 2. Process NFC Scan Events from Core 1 IMMEDIATELY
     NfcEvent ev;
-    if (nfcQueue != NULL && xQueueReceive(nfcQueue, &ev, pdMS_TO_TICKS(30)) == pdTRUE) {
+    while (nfcQueue != NULL && xQueueReceive(nfcQueue, &ev, 0) == pdTRUE) {
       sendNfcToCloudWorker(ev.uid);
     }
 
     now = millis();
 
-    // 3. Periodic Heartbeat (every 12 seconds)
-    if (now - lastHeartbeat > 12000) {
+    // 3. Periodic Heartbeat (every 20 seconds, only when no events waiting)
+    if ((nfcQueue == NULL || uxQueueMessagesWaiting(nfcQueue) == 0) && (now - lastHeartbeat > 20000)) {
       sendHeartbeatWorker();
       lastHeartbeat = millis();
     }
@@ -308,7 +308,7 @@ void subNetworkWorkerTask(void *pvParameters) {
 }
 
 // ================================================================
-//  CORE 0 HTTP WORKERS
+//  CORE 0 HTTP WORKERS (High-Speed Insecure TLS)
 // ================================================================
 
 void sendNfcToCloudWorker(const char *uid) {
@@ -321,13 +321,17 @@ void sendNfcToCloudWorker(const char *uid) {
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
+  client.setTimeout(3);
+
   HTTPClient http;
   String url = serverUrl + "/api/acknowledge_nfc/";
-  http.begin(url);
+  http.begin(client, url);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(2500);
+  http.setTimeout(3000);
 
   String payload = "{\"uid\":\"" + String(uid) + "\",\"station_name\":\"" + stationId + "\"}";
   int code = http.POST(payload);
@@ -369,10 +373,14 @@ void sendNfcToCloudWorker(const char *uid) {
 
 void sendHeartbeatWorker() {
   if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClientSecure client;
+  client.setInsecure();
+  client.setTimeout(2);
+
   HTTPClient http;
-  http.begin(serverUrl + "/api/heartbeat/");
+  http.begin(client, serverUrl + "/api/heartbeat/");
   http.addHeader("X-Station-ID", stationId);
-  http.setTimeout(1800);
+  http.setTimeout(2000);
   http.GET();
   http.end();
 }

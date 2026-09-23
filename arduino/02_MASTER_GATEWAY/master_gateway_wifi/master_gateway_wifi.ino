@@ -256,6 +256,15 @@ void loop() {
     incoming.trim();
 
     if (incoming.length() > 0) {
+      // Debounce identical LoRa packets within 3.5 seconds
+      static String lastLoRaMsg = "";
+      static unsigned long lastLoRaTime = 0;
+      if (incoming == lastLoRaMsg && (now - lastLoRaTime < 3500)) {
+        return;
+      }
+      lastLoRaMsg = incoming;
+      lastLoRaTime = now;
+
       Serial.printf("[LORA IN] %s\n", incoming.c_str());
 
       if (incoming.startsWith("START:")) {
@@ -375,18 +384,18 @@ void networkWorkerTask(void *pvParameters) {
     unsigned long now = millis();
 
     // 1. Maintain Wi-Fi
-    if (now - lastWifiCheck > 6000) {
+    if (now - lastWifiCheck > 8000) {
       if (WiFi.status() != WL_CONNECTED && !isConfigMode && wifiSSID.length() > 0) {
-        Serial.println(F("[CORE 0] Wi-Fi reconnection in progress..."));
+        Serial.println(F("[CORE 0] Wi-Fi reconnecting..."));
         WiFi.disconnect();
         WiFi.reconnect();
       }
       lastWifiCheck = now;
     }
 
-    // 2. Process High-Priority Events from Core 1 Queue
+    // 2. Process High-Priority Events from Core 1 Queue IMMEDIATELY
     NetEvent ev;
-    if (netQueue != NULL && xQueueReceive(netQueue, &ev, pdMS_TO_TICKS(25)) == pdTRUE) {
+    while (netQueue != NULL && xQueueReceive(netQueue, &ev, 0) == pdTRUE) {
       if (ev.type == NET_EVENT_CALL) {
         sendCallToCloudWorker(ev.room, ev.bed, ev.action);
       } else if (ev.type == NET_EVENT_NFC) {
@@ -398,27 +407,27 @@ void networkWorkerTask(void *pvParameters) {
 
     now = millis();
 
-    // 3. Fast Cloud Reset Polling (Every 1500ms — 3.3x faster than before)
-    if (now - lastResetCheck > 1500) {
+    // 3. Fast Cloud Reset Polling (Every 2500ms — ONLY when no urgent events waiting)
+    if ((netQueue == NULL || uxQueueMessagesWaiting(netQueue) == 0) && (now - lastResetCheck > 2500)) {
       checkCloudResetsWorker();
       lastResetCheck = millis();
     }
 
     now = millis();
 
-    // 4. Periodic Heartbeat (Every 12 seconds)
-    if (now - lastHeartbeat > 12000) {
+    // 4. Periodic Heartbeat (Every 20 seconds — ONLY when no urgent events waiting)
+    if ((netQueue == NULL || uxQueueMessagesWaiting(netQueue) == 0) && (now - lastHeartbeat > 20000)) {
       sendHeartbeatWorker();
       lastHeartbeat = millis();
     }
 
-    // Yield short CPU slice for FreeRTOS scheduler & Wi-Fi stack
+    // Short yield so we don't hog CPU
     vTaskDelay(pdMS_TO_TICKS(15));
   }
 }
 
 // ================================================================
-//  CORE 0 HTTP WORKERS
+//  CORE 0 HTTP WORKERS (High-Speed Insecure TLS)
 // ================================================================
 
 void sendCallToCloudWorker(const char *room, const char *bed, const char *action) {
@@ -427,13 +436,17 @@ void sendCallToCloudWorker(const char *room, const char *bed, const char *action
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
+  client.setTimeout(3);
+
   HTTPClient http;
   String url = serverUrl + "/api/calls/";
-  http.begin(url);
+  http.begin(client, url);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(2500);
+  http.setTimeout(3000);
 
   String postData = "room_number=" + String(room) + "&bed_number=" + String(bed) + "&action=" + String(action);
   int code = http.POST(postData);
@@ -456,13 +469,17 @@ void sendNfcToCloudWorker(const char *uid) {
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure(); // Skips CPU-intensive root CA chain verification on ESP32!
+  client.setTimeout(3);
+
   HTTPClient http;
   String url = serverUrl + "/api/acknowledge_nfc/";
-  http.begin(url);
+  http.begin(client, url);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(2500);
+  http.setTimeout(3000);
 
   String payload = "{\"uid\":\"" + String(uid) + "\",\"station_name\":\"" + stationId + "\"}";
   int code = http.POST(payload);
@@ -505,12 +522,16 @@ void sendNfcToCloudWorker(const char *uid) {
 void checkCloudResetsWorker() {
   if (WiFi.status() != WL_CONNECTED) return;
 
+  WiFiClientSecure client;
+  client.setInsecure();
+  client.setTimeout(2);
+
   HTTPClient http;
   String url = serverUrl + "/api/calls/check_reset/?_t=" + String(millis());
-  http.begin(url);
+  http.begin(client, url);
   http.addHeader("X-Station-ID", stationId);
   http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(1800);
+  http.setTimeout(2000);
 
   int code = http.GET();
   if (code == 200) {
@@ -549,10 +570,14 @@ void checkCloudResetsWorker() {
 
 void sendHeartbeatWorker() {
   if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClientSecure client;
+  client.setInsecure();
+  client.setTimeout(2);
+
   HTTPClient http;
-  http.begin(serverUrl + "/api/heartbeat/");
+  http.begin(client, serverUrl + "/api/heartbeat/");
   http.addHeader("X-Station-ID", stationId);
-  http.setTimeout(1800);
+  http.setTimeout(2000);
   http.GET();
   http.end();
 }
