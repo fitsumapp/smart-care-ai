@@ -301,7 +301,7 @@
             </div>
         </div>
 
-        <div class="col-lg-7">
+        <div class="col-lg-6 mb-4">
             <div class="glass-card h-100">
                 <div class="card-header mb-4">
                     <h5><i class="fas fa-sms me-2 text-info"></i> Twilio Escalation Settings</h5>
@@ -336,6 +336,57 @@
                 </form>
             </div>
         </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="glass-card h-100">
+                <div class="card-header mb-4 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5><i class="fas fa-volume-high me-2 text-primary"></i> AI Voice / የ AI ጥሪ ድምጽ (TTS)</h5>
+                        <p class="text-muted small m-0">Nurse Station Announcement Language & Voice Setting</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill small">Neural AI</span>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold">የማስታወቂያ ቋንቋ / Announcement Language</label>
+                        <div class="row g-2 mt-1">
+                            <div class="col-6">
+                                <label class="w-100 p-3 rounded-4 border text-center position-relative" style="background: rgba(56, 189, 248, 0.05); border-color: {% if config.tts_language == 'am' or not config.tts_language %}var(--accent-blue){% else %}var(--glass-border){% endif %}; cursor: pointer;">
+                                    <input type="radio" name="tts_language" value="am" class="form-check-input me-2" {% if config.tts_language == 'am' or not config.tts_language %}checked{% endif %}>
+                                    <div class="fw-bold mt-1">🇪🇹 አማርኛ (Amharic)</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">ጥርት ያለ የአማርኛ AI ድምጽ</div>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="w-100 p-3 rounded-4 border text-center position-relative" style="background: rgba(56, 189, 248, 0.05); border-color: {% if config.tts_language == 'en' %}var(--accent-blue){% else %}var(--glass-border){% endif %}; cursor: pointer;">
+                                    <input type="radio" name="tts_language" value="en" class="form-check-input me-2" {% if config.tts_language == 'en' %}checked{% endif %}>
+                                    <div class="fw-bold mt-1">🇬🇧 English</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">Natural English AI Voice</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 rounded-4 mb-4" style="background: rgba(14, 165, 233, 0.06); border: 1px dashed var(--accent-blue);">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="fw-bold small text-info"><i class="fas fa-play-circle me-1"></i> ድምጹን ሞክር (Test Voice)</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">የተመረጠውን ቋንቋ የ AI ድምጽ አሁኑኑ አድምጥ</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold" onclick="testTtsVoice(this)" id="btnTestVoice">
+                                <i class="fas fa-volume-up me-1"></i> አጫውት (Play)
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn w-100 py-3 rounded-4 fw-bold text-white mt-auto" style="background: var(--accent-blue);">
+                        <i class="fas fa-check-circle me-2"></i> Save AI Voice Setting / አስቀምጥ
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -365,6 +416,35 @@
         document.getElementById('lightBtn').classList.add('active');
     } else {
         document.getElementById('darkBtn').classList.add('active');
+    }
+
+    async function testTtsVoice(btn) {
+        const lang = document.querySelector('input[name="tts_language"]:checked')?.value || 'am';
+        const sampleText = (lang === 'am') 
+            ? 'ትኩረት። ክፍል 4 አልጋ 2 ጥሪ እያደረጉ ነው።' 
+            : 'Attention. Room 4 Bed 2 is calling.';
+        
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> በማጫወት ላይ...';
+
+        try {
+            const audio = new Audio(`/api/tts/?text=${encodeURIComponent(sampleText)}&lang=${lang}&_t=${Date.now()}`);
+            audio.onended = () => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            };
+            audio.onerror = () => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                alert('Audio playback error / ድምጹን ማጫወት አልተቻለም');
+            };
+            await audio.play();
+        } catch (e) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            console.error(e);
+        }
     }
 </script>
     <footer class="footer mt-5 pb-4">

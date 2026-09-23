@@ -37,5 +37,6 @@ urlpatterns = [
     path('api/heartbeat/', views.heartbeat_api, name='heartbeat_api'),
     path('api/system-status/', views.system_status_api, name='system_status_api'),
     path('api/diagnostics/action/', views.diagnostic_action_api, name='diagnostic_action_api'),
+    path('api/tts/', views.tts_api, name='tts_api'),
     path('supervisor/system-logs/', views.system_logs_view, name='system_logs'),
 ]

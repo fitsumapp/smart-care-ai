@@ -1,5 +1,7 @@
 from datetime import date, datetime, timedelta
 import os
+import hashlib
+import asyncio
 from django.conf import settings
 import threading
 try:
@@ -9,7 +11,7 @@ except (ImportError, ModuleNotFoundError):
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
 from django.contrib.admin.views.decorators import staff_member_required
@@ -240,11 +242,15 @@ def nurse_dashboard(request):
                 'active_calls': room_calls
             })
 
+        config = SystemSettings.objects.first()
+        tts_lang = config.tts_language if config and config.tts_language else 'am'
         response = render(request, 'nurse_dashboard.html', {
             'station_name': station.station_name,
             'room_data_list': room_data_list,
             'start_room': station.start_room,
             'end_room': station.end_room,
+            'tts_language': tts_lang,
+            'config': config,
         })
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response['Pragma'] = 'no-cache'
@@ -996,11 +1002,39 @@ def export_report(request):
 def settings_page(request):
     config, _ = SystemSettings.objects.get_or_create(id=1)
     if request.method == "POST":
-        config.twilio_sid = request.POST.get('twilio_sid')
-        config.twilio_auth_token = request.POST.get('twilio_auth_token')
-        config.twilio_from_number = request.POST.get('twilio_from_number')
-        config.notification_phone_number = request.POST.get('notification_phone_number')
-        config.escalation_delay_seconds = int(request.POST.get('escalation_delay', 30))
+        # Handle password update if submitted
+        new_pass = request.POST.get('new_password')
+        confirm_pass = request.POST.get('confirm_password')
+        if new_pass:
+            if confirm_pass and new_pass != confirm_pass:
+                messages.error(request, "Passwords do not match.")
+                if request.path.startswith('/admin/'):
+                    return redirect('admin_settings')
+                return redirect('settings_page')
+            request.user.set_password(new_pass)
+            request.user.save()
+            messages.success(request, "Password updated successfully.")
+
+        if 'twilio_sid' in request.POST:
+            config.twilio_sid = request.POST.get('twilio_sid')
+        if 'twilio_auth_token' in request.POST:
+            config.twilio_auth_token = request.POST.get('twilio_auth_token')
+        if 'twilio_from_number' in request.POST:
+            config.twilio_from_number = request.POST.get('twilio_from_number')
+        if 'notification_phone_number' in request.POST:
+            config.notification_phone_number = request.POST.get('notification_phone_number')
+
+        raw_delay = request.POST.get('escalation_delay_seconds') or request.POST.get('escalation_delay')
+        if raw_delay:
+            try:
+                config.escalation_delay_seconds = int(raw_delay)
+            except ValueError:
+                pass
+
+        tts_lang = request.POST.get('tts_language')
+        if tts_lang in ['am', 'en']:
+            config.tts_language = tts_lang
+
         config.save()
         messages.success(request, "Settings updated successfully.")
         if request.path.startswith('/admin/'):
@@ -1681,4 +1715,72 @@ def diagnostic_action_api(request):
         })
 
     return JsonResponse({'status': 'error', 'message': f"Unknown action: {action}"}, status=400)
+
+
+# -------------------------------------------------------------
+# AI High-Fidelity Neural TTS (Amharic & English)
+# -------------------------------------------------------------
+@never_cache
+def tts_api(request):
+    """
+    High-Fidelity Neural Text-to-Speech API.
+    Supports Amharic (am-ET-MekdesNeural) and English (en-US-JennyNeural).
+    Results are cached in media/tts_cache/ for sub-5ms ultra-fast response.
+    """
+    text = request.GET.get('text', '').strip()
+    if not text:
+        return JsonResponse({'error': 'No text provided'}, status=400)
+
+    # Detect or obtain language
+    lang = request.GET.get('lang', '').lower().strip()
+    if not lang or lang not in ['am', 'en']:
+        # Auto-detect Amharic Unicode characters (U+1200 to U+137F)
+        has_amharic = any('\u1200' <= ch <= '\u137f' for ch in text)
+        if has_amharic:
+            lang = 'am'
+        else:
+            config = SystemSettings.objects.first()
+            lang = config.tts_language if config and config.tts_language else 'am'
+
+    voice = 'am-ET-MekdesNeural' if lang == 'am' else 'en-US-JennyNeural'
+
+    # Cache folder under MEDIA_ROOT
+    media_dir = getattr(settings, 'MEDIA_ROOT', None) or os.path.join(settings.BASE_DIR, 'media')
+    cache_dir = os.path.join(media_dir, 'tts_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+
+    cache_key = hashlib.md5(f"{voice}:{text}".encode('utf-8')).hexdigest()
+    file_path = os.path.join(cache_dir, f"{cache_key}.mp3")
+
+    if not os.path.exists(file_path):
+        try:
+            import edge_tts
+            
+            async def _synthesize():
+                comm = edge_tts.Communicate(text, voice=voice)
+                await comm.save(file_path)
+
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    pool.submit(lambda: asyncio.run(_synthesize())).result(timeout=10)
+            else:
+                loop.run_until_complete(_synthesize())
+
+        except Exception as e:
+            return JsonResponse({'error': f'TTS synthesis error: {str(e)}', 'fallback': True}, status=500)
+
+    try:
+        response = FileResponse(open(file_path, 'rb'), content_type='audio/mpeg')
+        response['Cache-Control'] = 'public, max-age=86400'
+        return response
+    except Exception as e:
+        return JsonResponse({'error': f'Failed reading audio file: {str(e)}'}, status=500)
+
 

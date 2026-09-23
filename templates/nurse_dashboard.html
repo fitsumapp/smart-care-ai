@@ -1149,22 +1149,69 @@
                     await new Promise(r => setTimeout(r, 1800));
                     sound.pause();
 
-                    const msg = 'Attention. ' + visible.map(c => {
-                        if (c.call_type === 'AI_FALL') return `Emergency. Room ${c.room} fall detected.`;
-                        if (c.call_type === 'AI_TREMOR') return `Urgent. Room ${c.room} tremor detected.`;
-                        const bedLower = String(c.bed).toLowerCase();
-                        let bedStr = '';
-                        if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
-                            bedStr = bedLower.includes('bed') ? ` ${c.bed}` : ` Bed ${c.bed}`;
-                        }
-                        return `Room ${c.room}${bedStr} is calling.`;
-                    }).join(' ');
+                    const ttsLang = '{{ tts_language|default:"am" }}';
+                    let msg = '';
+                    if (ttsLang === 'am') {
+                        msg = visible.map(c => {
+                            if (c.call_type === 'AI_FALL') return `አስቸኳይ አደጋ። ክፍል ${c.room} ታካሚ መውደቅ ተገኝቷል።`;
+                            if (c.call_type === 'AI_TREMOR') return `ትኩረት። ክፍል ${c.room} መንቀጥቀጥ ተገኝቷል።`;
+                            const bedLower = String(c.bed).toLowerCase();
+                            let bedStr = '';
+                            if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
+                                const cleanBed = String(c.bed).replace(/bed/i, '').trim();
+                                bedStr = cleanBed ? ` አልጋ ${cleanBed}` : ` ${c.bed}`;
+                            }
+                            return `ትኩረት። ክፍል ${c.room}${bedStr} ጥሪ እያደረጉ ነው።`;
+                        }).join(' ');
+                    } else {
+                        msg = 'Attention. ' + visible.map(c => {
+                            if (c.call_type === 'AI_FALL') return `Emergency. Room ${c.room} fall detected.`;
+                            if (c.call_type === 'AI_TREMOR') return `Urgent. Room ${c.room} tremor detected.`;
+                            const bedLower = String(c.bed).toLowerCase();
+                            let bedStr = '';
+                            if (bedLower !== 'general' && bedLower !== 'special' && !String(c.room).toLowerCase().includes('bed')) {
+                                bedStr = bedLower.includes('bed') ? ` ${c.bed}` : ` Bed ${c.bed}`;
+                            }
+                            return `Room ${c.room}${bedStr} is calling.`;
+                        }).join(' ');
+                    }
 
+                    // Play crystal-clear Neural AI Voice with fallback to Web SpeechSynthesis
                     await new Promise(resolve => {
-                        const ut = new SpeechSynthesisUtterance(msg);
-                        ut.rate = 0.9;
-                        ut.onend = resolve; ut.onerror = resolve;
-                        window.speechSynthesis.speak(ut);
+                        let finished = false;
+                        const done = () => { if (!finished) { finished = true; resolve(); } };
+
+                        const audioUrl = `/api/tts/?text=${encodeURIComponent(msg)}&lang=${ttsLang}`;
+                        const ttsAudio = new Audio(audioUrl);
+
+                        ttsAudio.onended = done;
+                        ttsAudio.onerror = () => {
+                            try {
+                                const ut = new SpeechSynthesisUtterance(msg);
+                                ut.lang = (ttsLang === 'am') ? 'am-ET' : 'en-US';
+                                ut.rate = 0.9;
+                                ut.onend = done;
+                                ut.onerror = done;
+                                window.speechSynthesis.speak(ut);
+                            } catch (err) {
+                                done();
+                            }
+                        };
+
+                        ttsAudio.play().catch(() => {
+                            try {
+                                const ut = new SpeechSynthesisUtterance(msg);
+                                ut.lang = (ttsLang === 'am') ? 'am-ET' : 'en-US';
+                                ut.rate = 0.9;
+                                ut.onend = done;
+                                ut.onerror = done;
+                                window.speechSynthesis.speak(ut);
+                            } catch (err) {
+                                done();
+                            }
+                        });
+
+                        setTimeout(done, 12000);
                     });
                 } else {
                     await new Promise(r => setTimeout(r, 1800));

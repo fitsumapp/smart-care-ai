@@ -193,18 +193,39 @@
             }
         }
 
+        let currentTtsAudio = null;
+
         function speakCall(roomNumbers) {
-            const message = `Attention, Room ${roomNumbers} is calling.`;
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'en-US';
-            utterance.onstart = () => { isSpeaking = true; };
-            utterance.onend = () => { isSpeaking = false; };
-            window.speechSynthesis.speak(utterance);
+            const message = `ትኩረት። ክፍል ${roomNumbers} ጥሪ እያደረጉ ነው።`;
+            isSpeaking = true;
+            try {
+                if (currentTtsAudio) { currentTtsAudio.pause(); }
+                currentTtsAudio = new Audio(`/api/tts/?text=${encodeURIComponent(message)}&lang=am`);
+                currentTtsAudio.onended = () => { isSpeaking = false; };
+                currentTtsAudio.onerror = () => {
+                    const utterance = new SpeechSynthesisUtterance(`Attention, Room ${roomNumbers} is calling.`);
+                    utterance.onstart = () => { isSpeaking = true; };
+                    utterance.onend = () => { isSpeaking = false; };
+                    window.speechSynthesis.speak(utterance);
+                };
+                currentTtsAudio.play().catch(() => {
+                    const utterance = new SpeechSynthesisUtterance(`Attention, Room ${roomNumbers} is calling.`);
+                    utterance.onstart = () => { isSpeaking = true; };
+                    utterance.onend = () => { isSpeaking = false; };
+                    window.speechSynthesis.speak(utterance);
+                });
+            } catch (e) {
+                isSpeaking = false;
+            }
         }
 
         function stopAllAudio() {
             alertSound.pause();
             alertSound.currentTime = 0;
+            if (currentTtsAudio) {
+                currentTtsAudio.pause();
+                currentTtsAudio.currentTime = 0;
+            }
             window.speechSynthesis.cancel();
             isSpeaking = false;
             currentPhase = 'alert';

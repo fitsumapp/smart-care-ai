@@ -31,6 +31,7 @@ staticfiles/
 # Django
 *.log
 local_settings.py
+media/
 
 # OS Files
 .DS_Store

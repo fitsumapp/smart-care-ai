@@ -228,6 +228,16 @@ class SystemSettings(models.Model):
     twilio_from_number = models.CharField(max_length=20, blank=True, null=True)
     notification_phone_number = models.CharField(max_length=20, blank=True, null=True)
     escalation_delay_seconds = models.IntegerField(default=30)
+    TTS_LANGUAGE_CHOICES = [
+        ('am', 'አማርኛ (Amharic)'),
+        ('en', 'English'),
+    ]
+    tts_language = models.CharField(
+        max_length=10,
+        choices=TTS_LANGUAGE_CHOICES,
+        default='am',
+        verbose_name="AI Voice Announcement Language"
+    )
 
     def clean(self):
         super().clean()
