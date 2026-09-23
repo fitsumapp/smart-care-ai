@@ -1,24 +1,28 @@
+// ================================================================
+//  MedPulse Smart-Care AI — Patient Room LoRa Transmitter
+//  Hardware: Arduino (Uno / Nano) + LoRa E32-433T20D + Buttons + LED + Buzzer
+//  Company:  ACRMA TECH SOLUTION PLC
+// ================================================================
+
 #include <SoftwareSerial.h>
 
 // እያንዳንዱ ክፍል የራሱ የሆነ ቁጥር ሊኖረው ይገባል (ለምሳሌ 4, 10, 11...)
-// ማሳሰቢያ፡ በሙከራ ወቅት ክፍል 4 እየተጠቀሙ ከሆነ ይህንን 4 ያድርጉት!
 const int ROOM_ID = 10; 
 
 // Pins
-const int BED1_BTN = 2;
-const int BED2_BTN = 5;
-const int BED3_BTN = 6;
-const int TOILET_BTN = 7;
-const int NURSE_ARRIVED_BTN = 8; 
+const int BED1_BTN          = 2;  // አልጋ 1 አዝራር
+const int BED2_BTN          = 5;  // አልጋ 2 አዝራር
+const int BED3_BTN          = 6;  // አልጋ 3 አዝራር
+const int TOILET_BTN        = 7;  // መጸዳጃ ቤት አዝራር
+const int NURSE_ARRIVED_BTN = 8;  // ነርስ ደረሰች ማረጋገጫ አዝራር
 
-const int CONFIRM_LED = 4; 
-const int ROOM_BUZZER = 3; 
+const int CONFIRM_LED       = 4;  // ጥሪ ማሳወቂያ መብራት (Pin 4)
+const int ROOM_BUZZER       = 3;  // ድምጽ ማጉያ (Pin 3 - Active or Passive)
 
-// የ LED አሰራር (ተራ LED ከሆነ HIGH ሲሆን ይበራል፤ የተገዛ LED Module ከሆነ LOW ሊሆን ይችላል)
-const int LED_ON  = HIGH; 
-const int LED_OFF = LOW;  
+SoftwareSerial e32Serial(10, 11); // Pin 10 = RX, Pin 11 = TX
 
-SoftwareSerial e32Serial(10, 11); 
+// የጥሪ ሁኔታ መቆጣጠሪያ (ጥሪ ሲደረግ true ይሆናል፤ ነርሷ ስትቀበል false ሆኖ ይጠፋል)
+bool isCallActive = false;
 
 // ለእያንዳንዱ Button መደጋገም መከላከያ (Cooldown) ሰዓት መያዣ
 unsigned long b1_time = 0;
@@ -43,16 +47,22 @@ void setup() {
   pinMode(NURSE_ARRIVED_BTN, INPUT_PULLUP);
   
   pinMode(CONFIRM_LED, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ROOM_BUZZER, OUTPUT);
   
-  digitalWrite(CONFIRM_LED, LED_OFF);
-  digitalWrite(ROOM_BUZZER, LOW);
+  // --------------------------------------------------------------
+  // ቦርዱ ሲበራ መብራቱ እና ቡዘሩ መስራታቸውን በ 200ms ፈትሾ ማረጋገጥ
+  // (መብራቱ ብልጭ ብሎ ቡዘሩ ድምጽ ካሰማ ሽቦዎቹ በትክክል ተገናኝተዋል)
+  // --------------------------------------------------------------
+  digitalWrite(CONFIRM_LED, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);
+  tone(ROOM_BUZZER, 2200);
+  digitalWrite(ROOM_BUZZER, HIGH);
+  delay(200);
+  digitalWrite(CONFIRM_LED, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
   noTone(ROOM_BUZZER);
-  
-  // ቦርዱ ሲበራ LED መብራቱ መስራቱን ማረጋገጫ (አጭር ብልጭታ)
-  digitalWrite(CONFIRM_LED, LED_ON);
-  delay(150);
-  digitalWrite(CONFIRM_LED, LED_OFF);
+  digitalWrite(ROOM_BUZZER, LOW);
   
   Serial.println("Room " + String(ROOM_ID) + " Transmitter Ready");
 }
@@ -60,19 +70,20 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // 1. ጥሪ መላክ (ሁሉንም እኩል መጫን እንዲቻል 'else if' አጥፍተን በ 'if' ቀይረነዋል)
-  // እያንዳንዱ Button ከተጫነ በኋላ ለ 2 ሰከንድ (2000ms) ሌላ ጥሪ አይልክም (Debounce)
+  // 1. ጥሪ መላክ (የአልጋ እና የመጸዳጃ ቤት አዝራሮች)
   if (digitalRead(BED1_BTN) == LOW && (now - b1_time > 2000)) { b1_time = now; sendCall("Bed 1"); }
   if (digitalRead(BED2_BTN) == LOW && (now - b2_time > 2000)) { b2_time = now; sendCall("Bed 2"); }
   if (digitalRead(BED3_BTN) == LOW && (now - b3_time > 2000)) { b3_time = now; sendCall("Bed 3"); }
   if (digitalRead(TOILET_BTN) == LOW && (now - t_time > 2000)) { t_time = now; sendCall("Bathroom"); }
 
-  // 2. ነርሷ መድረሷን ማሳወቅ (ሰዓት ለማቆም)
+  // 2. ነርሷ ክፍል ውስጥ በአካል ስትደርስ (Pin 8 ሲጫን)
   if (digitalRead(NURSE_ARRIVED_BTN) == LOW && (now - a_time > 2000)) {
     a_time = now;
+    isCallActive = false;
     
-    // ነርሷ ስትደርስ ጥሪው ስለተመለሰ መብራቱ ይጠፋል
-    digitalWrite(CONFIRM_LED, LED_OFF);
+    // ነርሷ ስትደርስ መብራቱ ይጠፋል (Pin 4 እና onboard Pin 13)
+    digitalWrite(CONFIRM_LED, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
     
     // የመጀመሪያ ጥሪ
     e32Serial.println("ARRIVED:" + String(ROOM_ID));
@@ -86,44 +97,52 @@ void loop() {
     Serial.println("Nurse Arrived - Sent (2)");
   }
 
-  // 3. ነርሷ ስቴሽን ሆና NFC ስታስነካ ወይም "Enter" ስትጫን የሚመጣ መልስ
+  // 3. ነርሷ ስቴሽን ሆና NFC ስታስነካ ወይም Dashboard ላይ Accept ስታደርግ የሚመጣ መልስ
   if (e32Serial.available() > 0) {
     String feedback = e32Serial.readStringUntil('\n');
     feedback.trim();
     
-    // ለዚህ ክፍል ወይም ለሁሉም የተላከ መሆኑን ማረጋገጥ (DONE:10 ወይም DONE:ALL)
-    if (feedback.indexOf("DONE:" + String(ROOM_ID)) != -1 || feedback.indexOf("DONE:ALL") != -1) {
-      digitalWrite(CONFIRM_LED, LED_OFF); // መብራቱ ይጠፋል
-      
-      // Buzzer ድምጽ (Active Buzzer በ HIGH ይጮሃል፤ Passive Buzzer ደግሞ በ tone ይጮሃል)
-      tone(ROOM_BUZZER, 2000);
-      digitalWrite(ROOM_BUZZER, HIGH);  // ነርሷ እየመጣች እንደሆነ ለማሳወቅ
-      
-      unsigned long startBuzz = millis();
-      // Buzzer ኮዱን block እንዳያደርገው non-blocking መዘግየት (2 ሰከንድ)
-      while(millis() - startBuzz < 2000) {
-        // ምንም ሳያደርግ 2 ሰከንድ ይጠብቃል
+    // ከጌትዌይ የ DONE መልእክት ሲመጣ
+    if (feedback.startsWith("DONE")) {
+      // ይህ ክፍል ጥሪ አድርጎ እየጠበቀ ከሆነ ወይም የክፍሉ ቁጥር ከተመሳሰለ
+      if (isCallActive || feedback.indexOf(String(ROOM_ID)) != -1 || feedback.indexOf("ALL") != -1) {
+        isCallActive = false;
+        
+        // 1. መብራቱን ያጠፋል (Pin 4 እና onboard Pin 13 ይጠፋሉ)
+        digitalWrite(CONFIRM_LED, LOW);
+        digitalWrite(LED_BUILTIN, LOW);
+        
+        // 2. ነርሷ ጥሪውን እንደተቀበለችው ታካሚው እንዲያውቅ ቡዘሩ ለ 2 ሰከንድ ይጮሃል
+        tone(ROOM_BUZZER, 2200);          // ለ Passive Buzzer
+        digitalWrite(ROOM_BUZZER, HIGH);  // ለ Active Buzzer
+        
+        unsigned long startBuzz = millis();
+        while(millis() - startBuzz < 2000) {
+          // 2 ሰከንድ ይጠብቃል
+        }
+        noTone(ROOM_BUZZER);
+        digitalWrite(ROOM_BUZZER, LOW);
+        
+        Serial.println("Nurse Accepted Call -> LED OFF, Buzzer Done!");
       }
-      noTone(ROOM_BUZZER);
-      digitalWrite(ROOM_BUZZER, LOW);
     }
   }
 }
 
 void sendCall(String location) {
-  // መብራቱን ያበራል
-  digitalWrite(CONFIRM_LED, LED_ON); 
+  // 1. ጥሪው ስለተደረገ መብራቱን ያበራል (Pin 4 እንዲሁም ቦርዱ ላይ ያለውን Pin 13 ያበራል)
+  isCallActive = true;
+  digitalWrite(CONFIRM_LED, HIGH); 
+  digitalWrite(LED_BUILTIN, HIGH); 
   
-  // 1ኛ. የመጀመሪያ ጥሪ (ወዲያው ይላካል - ብቻውን ከሆነ ይደርሳል፣ እኩል ከተጫኑት አየር ላይ ይጋጫል)
+  // 2. የመጀመሪያ ጥሪ በ LoRa ይላካል
   e32Serial.println("START:" + String(ROOM_ID) + ":" + location);
   Serial.println("Sent (1) -> START:" + String(ROOM_ID) + ":" + location);
   
-  // 2ኛ. መጋጨት ካለ ለማስተካከል በእያንዳንዱ ክፍል የተለያየ ሰዓት ይጠብቃል (TDMA - Collision Avoidance)
-  // ክፍል 4  -> 4 * 150 = 600ms
-  // ክፍል 10 -> 10 * 150 = 1500ms
+  // 3. Collision Avoidance (TDMA)
   delay(ROOM_ID * 150); 
   
-  // 3ኛ. ሁለተኛ ጥሪ (Backup - መንገዱ ሲለቀቅለት በሰላም ይደርሳል)
+  // 4. ሁለተኛ ጥሪ (Backup)
   e32Serial.println("START:" + String(ROOM_ID) + ":" + location);
   Serial.println("Sent (2) -> START:" + String(ROOM_ID) + ":" + location);
 }

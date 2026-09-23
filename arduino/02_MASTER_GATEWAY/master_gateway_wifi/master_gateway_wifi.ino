@@ -253,9 +253,13 @@ void loop() {
       if (roomToReset.length() > 0 && roomToReset != "null") {
         loraSerial.printf("DONE:%s\n", roomToReset.c_str());
         Serial.printf("[NFC LORA RESET ➜] DONE:%s\n", roomToReset.c_str());
-        delay(60);
+        delay(40);
+        loraSerial.println("DONE:ALL");
+        delay(40);
         loraSerial.printf("DONE:%s\n", roomToReset.c_str());
-        Serial.printf("[NFC LORA RESET (Backup) ➜] DONE:%s\n", roomToReset.c_str());
+      } else {
+        loraSerial.println("DONE:ALL");
+        Serial.println(F("[NFC LORA RESET ➜] DONE:ALL (Broadcast)"));
       }
       hasActiveCall = false;
       currentActiveRoom = "";
@@ -264,7 +268,9 @@ void loop() {
     } else if (fb.type == FEEDBACK_LORA_RESET) {
       loraSerial.printf("DONE:%s\n", fb.resetRoom);
       Serial.printf("[LORA RESET ➜] DONE:%s\n", fb.resetRoom);
-      delay(60);
+      delay(40);
+      loraSerial.println("DONE:ALL");
+      delay(40);
       loraSerial.printf("DONE:%s\n", fb.resetRoom);
       hasActiveCall = false;
       currentActiveRoom = "";
