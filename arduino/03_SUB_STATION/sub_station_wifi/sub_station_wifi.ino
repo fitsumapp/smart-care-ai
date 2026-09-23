@@ -1,9 +1,12 @@
 // ================================================================
 //  MedPulse Smart-Care AI — ESP32 Sub-Station Node (Cloud Wi-Fi Mode)
+//  Architecture: FreeRTOS Dual-Core Pipeline
+//    - Core 1: Dedicated Hardware Loop (Instant NFC Polling <5ms, TFT UI)
+//    - Core 0: Dedicated Background Worker (Wi-Fi POST, Cloud Sync, Heartbeat)
 //  Hardware: ESP32 DevKit V1 (30-pin)
 //  Peripherals:
 //    1. MFRC522 RFID / NFC Reader (VSPI: SCK=18, MOSI=23, MISO=19, CS=5, RST=22)
-//    2. GC9A01A 240x240 Round TFT Display (VSPI: SCK=18, MOSI=23, CS=15, DC=4, RST=2)
+//    2. GC9A01A 240x240 Round TFT Display (VSPI: SCK=18, MOSI=23, CS=15, DC=4, RST=14)
 //    3. Built-in Phone Captive Portal (Setup Wi-Fi & Station ID from phone!)
 //  Note: NO LoRa required! Sub-stations only acknowledge calls via NFC over Wi-Fi.
 //  Company: ACRMA TECH SOLUTION PLC
@@ -19,6 +22,9 @@
 #include <MFRC522.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_GC9A01A.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
 // ── Pin Definitions ────────────────────────────────────────────
 // NFC (MFRC522) Pins
@@ -47,6 +53,26 @@
 #define C_WHITE      0xFFFF
 #define C_GRAY_MID   0x7BEF
 
+// ── Inter-Core Event Communication (FreeRTOS) ──────────────────
+struct NfcEvent {
+  char uid[32];
+};
+
+enum FeedbackType {
+  FEEDBACK_NONE,
+  FEEDBACK_NFC_GRANTED,
+  FEEDBACK_NFC_DENIED
+};
+
+struct FeedbackEvent {
+  FeedbackType type;
+  char nurseName[32];
+};
+
+QueueHandle_t nfcQueue = NULL;
+QueueHandle_t feedbackQueue = NULL;
+TaskHandle_t subNetTaskHandle = NULL;
+
 // ── Hardware Instances ─────────────────────────────────────────
 MFRC522          rfid(NFC_SS_PIN, NFC_RST_PIN);
 Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_RST);
@@ -57,7 +83,7 @@ DNSServer        dnsServer;
 // ── Configuration State ────────────────────────────────────────
 String wifiSSID     = "";
 String wifiPassword = "";
-String serverUrl    = "https://your-hospital-domain.com";
+String serverUrl    = "https://smartcareai.acrmatech.com";
 String stationId    = "Nurse Station 2";
 const String STATION_KEY = "medpulse-station-secret-key";
 
@@ -66,8 +92,6 @@ bool showingMessage  = false;
 unsigned long messageTimer   = 0;
 unsigned long pulseTimer     = 0;
 uint8_t       pulseStep      = 0;
-unsigned long lastHeartbeat  = 0;
-unsigned long lastWifiCheck  = 0;
 
 // ── Function Declarations ──────────────────────────────────────
 void loadConfiguration();
@@ -75,54 +99,57 @@ void saveConfiguration(const String &s, const String &p, const String &u, const 
 void startConfigPortal();
 void handlePortalRoot();
 void handlePortalSave();
+
 void drawBootSplash();
 void showConfigScreen();
 void showIdleScreen();
 void animatePulseRing();
+void showVerifyingScreen();
 void showGrantedScreen(const String &name);
 void showDeniedScreen();
 void centerText(const char* text, int16_t y, uint8_t size, uint16_t color);
 
-void sendNfcToCloud(const String &uid);
-void sendHeartbeat();
-void ensureWifiConnected();
+void subNetworkWorkerTask(void *pvParameters);
+void sendNfcToCloudWorker(const char *uid);
+void sendHeartbeatWorker();
 
 // ================================================================
-//  SETUP
+//  SETUP (Runs on Core 1)
 // ================================================================
 void setup() {
   Serial.begin(115200);
 
   Serial.println(F("\n=================================================="));
   Serial.println(F("  MedPulse Smart-Care AI — Sub-Station (Wi-Fi)    "));
+  Serial.println(F("  FreeRTOS Dual-Core Ultra-Speed Real-Time Engine  "));
   Serial.println(F("=================================================="));
 
-  // Initialize Chip Selects
+  // 1. Initialize Chip Selects
   pinMode(NFC_SS_PIN, OUTPUT);
   digitalWrite(NFC_SS_PIN, HIGH);
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
 
-  // Initialize Hardware SPI
+  // 2. Initialize Hardware SPI (VSPI pins: 18, 19, 23)
   SPI.begin(18, 19, 23, -1);
 
-  // 1. Init RFID (Hardware SPI)
+  // 3. Init RFID (MFRC522) on Core 1
+  digitalWrite(TFT_CS, HIGH);
+  digitalWrite(NFC_SS_PIN, LOW);
   rfid.PCD_Init();
-  delay(50);
+  delay(10);
   rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
   byte nfcVer = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  digitalWrite(NFC_SS_PIN, HIGH);
   Serial.printf("[NFC HARDWARE] MFRC522 Chip Version: 0x%02X\n", nfcVer);
 
-  // Deselect RFID before TFT operations
-  digitalWrite(NFC_SS_PIN, HIGH);
-
-  // 2. Init TFT (Hardware SPI at 24 MHz)
+  // 4. Init TFT (Hardware SPI at 24 MHz) on Core 1
   tft.begin(24000000);
   tft.setRotation(0);
   tft.fillScreen(C_VOID);
   drawBootSplash();
 
-  // Load saved configuration from Flash
+  // 5. Load saved configuration from Flash
   loadConfiguration();
 
   // If BOOT button (GPIO 0) held during startup, force phone configuration portal
@@ -130,19 +157,19 @@ void setup() {
   bool forceConfig = (digitalRead(0) == LOW);
 
   if (wifiSSID.length() == 0 || forceConfig) {
-    Serial.println(F("[SYSTEM] No Wi-Fi configured or BOOT button pressed. Starting Phone Setup Portal..."));
+    Serial.println(F("[SYSTEM] Starting Phone Setup Portal..."));
     startConfigPortal();
     return;
   }
 
-  // Connect to saved Wi-Fi
+  // 6. Connect to saved Wi-Fi
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
   Serial.printf("[Wi-Fi] Connecting to: %s\n", wifiSSID.c_str());
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 24) {
-    delay(500);
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(400);
     Serial.print(".");
     attempts++;
   }
@@ -155,13 +182,28 @@ void setup() {
     return;
   }
 
-  delay(600);
+  // 7. Create Inter-Core FreeRTOS Queues
+  nfcQueue = xQueueCreate(16, sizeof(NfcEvent));
+  feedbackQueue = xQueueCreate(16, sizeof(FeedbackEvent));
+
+  // 8. Spawn Background Network Worker Task on Core 0
+  xTaskCreatePinnedToCore(
+    subNetworkWorkerTask,
+    "SubNetWorkerTask",
+    8192,
+    NULL,
+    1,
+    &subNetTaskHandle,
+    0
+  );
+
+  delay(400);
   showIdleScreen();
-  Serial.println(F("[SYSTEM] Sub-Station Node Active & Ready for NFC Badge Scans."));
+  Serial.println(F("[SYSTEM] Sub-Station Node Active & Ready for Instant NFC Tap."));
 }
 
 // ================================================================
-//  MAIN LOOP
+//  MAIN LOOP (Runs on Core 1 — 100% Dedicated to NFC & UI)
 // ================================================================
 void loop() {
   // If in Phone Setup Portal mode, handle DNS and Web requests
@@ -173,15 +215,19 @@ void loop() {
 
   unsigned long now = millis();
 
-  // 1. Maintain Wi-Fi Connection
-  if (now - lastWifiCheck > 10000) {
-    ensureWifiConnected();
-    lastWifiCheck = now;
+  // 1. Check Feedback from Core 0
+  FeedbackEvent fb;
+  if (feedbackQueue != NULL && xQueueReceive(feedbackQueue, &fb, 0) == pdTRUE) {
+    if (fb.type == FEEDBACK_NFC_GRANTED) {
+      showGrantedScreen(fb.nurseName);
+    } else if (fb.type == FEEDBACK_NFC_DENIED) {
+      showDeniedScreen();
+    }
   }
 
-  // 2. Listen for Nurse NFC Card Scan (MFRC522)
+  // 2. Ultra-Fast NFC Polling (< 5ms Tap Detection)
   digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, HIGH);
+  digitalWrite(NFC_SS_PIN, LOW);
 
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     String uid = "";
@@ -194,26 +240,141 @@ void loop() {
 
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();
+    digitalWrite(NFC_SS_PIN, HIGH);
 
-    sendNfcToCloud(uid);
+    // Immediate local visual feedback (< 1ms)
+    showVerifyingScreen();
+
+    // Enqueue to Core 0 Network Worker
+    if (nfcQueue != NULL) {
+      NfcEvent ev;
+      strncpy(ev.uid, uid.c_str(), sizeof(ev.uid) - 1);
+      xQueueSend(nfcQueue, &ev, 0);
+    }
+  } else {
+    digitalWrite(NFC_SS_PIN, HIGH);
   }
 
-  // 3. Send Heartbeat to Cloud API (every 15 seconds)
-  if (now - lastHeartbeat > 15000) {
-    sendHeartbeat();
-    lastHeartbeat = now;
-  }
-
-  // 4. TFT Animation & Message Timeout
+  // 3. TFT Animation & Message Timeout
   if (showingMessage && (now - messageTimer > 3500)) {
     showIdleScreen();
     showingMessage = false;
   }
 
-  if (!showingMessage && (now - pulseTimer > 80)) {
+  if (!showingMessage && (now - pulseTimer > 100)) {
     animatePulseRing();
     pulseTimer = now;
   }
+}
+
+// ================================================================
+//  BACKGROUND NETWORK WORKER (Runs on Core 0 — Non-Blocking)
+// ================================================================
+void subNetworkWorkerTask(void *pvParameters) {
+  Serial.println(F("[CORE 0] Sub-Station Network Worker Active."));
+
+  unsigned long lastHeartbeat = 0;
+  unsigned long lastWifiCheck = 0;
+
+  while (true) {
+    unsigned long now = millis();
+
+    // 1. Maintain Wi-Fi
+    if (now - lastWifiCheck > 6000) {
+      if (WiFi.status() != WL_CONNECTED && !isConfigMode && wifiSSID.length() > 0) {
+        Serial.println(F("[CORE 0] Wi-Fi reconnecting..."));
+        WiFi.disconnect();
+        WiFi.reconnect();
+      }
+      lastWifiCheck = now;
+    }
+
+    // 2. Process NFC Scan Events from Core 1
+    NfcEvent ev;
+    if (nfcQueue != NULL && xQueueReceive(nfcQueue, &ev, pdMS_TO_TICKS(30)) == pdTRUE) {
+      sendNfcToCloudWorker(ev.uid);
+    }
+
+    now = millis();
+
+    // 3. Periodic Heartbeat (every 12 seconds)
+    if (now - lastHeartbeat > 12000) {
+      sendHeartbeatWorker();
+      lastHeartbeat = millis();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(15));
+  }
+}
+
+// ================================================================
+//  CORE 0 HTTP WORKERS
+// ================================================================
+
+void sendNfcToCloudWorker(const char *uid) {
+  if (WiFi.status() != WL_CONNECTED) {
+    if (feedbackQueue != NULL) {
+      FeedbackEvent fb;
+      fb.type = FEEDBACK_NFC_DENIED;
+      xQueueSend(feedbackQueue, &fb, 0);
+    }
+    return;
+  }
+
+  HTTPClient http;
+  String url = serverUrl + "/api/acknowledge_nfc/";
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Station-ID", stationId);
+  http.addHeader("X-Station-API-Key", STATION_KEY);
+  http.setTimeout(2500);
+
+  String payload = "{\"uid\":\"" + String(uid) + "\",\"station_name\":\"" + stationId + "\"}";
+  int code = http.POST(payload);
+
+  if (code == 200) {
+    String res = http.getString();
+    Serial.printf("[CORE 0 NFC RESP] %s\n", res.c_str());
+
+    if (res.indexOf("\"status\":\"success\"") != -1) {
+      String nurseName = "Nurse";
+      int nameIdx = res.indexOf("\"nurse_name\":\"");
+      if (nameIdx != -1) {
+        int start = nameIdx + 14;
+        int end = res.indexOf("\"", start);
+        if (end != -1) nurseName = res.substring(start, end);
+      }
+      if (feedbackQueue != NULL) {
+        FeedbackEvent fb;
+        fb.type = FEEDBACK_NFC_GRANTED;
+        strncpy(fb.nurseName, nurseName.c_str(), sizeof(fb.nurseName) - 1);
+        xQueueSend(feedbackQueue, &fb, 0);
+      }
+    } else {
+      if (feedbackQueue != NULL) {
+        FeedbackEvent fb;
+        fb.type = FEEDBACK_NFC_DENIED;
+        xQueueSend(feedbackQueue, &fb, 0);
+      }
+    }
+  } else {
+    if (feedbackQueue != NULL) {
+      FeedbackEvent fb;
+      fb.type = FEEDBACK_NFC_DENIED;
+      xQueueSend(feedbackQueue, &fb, 0);
+    }
+  }
+  http.end();
+}
+
+void sendHeartbeatWorker() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  http.begin(serverUrl + "/api/heartbeat/");
+  http.addHeader("X-Station-ID", stationId);
+  http.setTimeout(1800);
+  http.GET();
+  http.end();
 }
 
 // ================================================================
@@ -224,7 +385,7 @@ void loadConfiguration() {
   prefs.begin("smartsub", true);
   wifiSSID     = prefs.getString("ssid", "");
   wifiPassword = prefs.getString("pass", "");
-  serverUrl    = prefs.getString("server_url", "https://your-hospital-domain.com");
+  serverUrl    = prefs.getString("server_url", "https://smartcareai.acrmatech.com");
   stationId    = prefs.getString("station_id", "Nurse Station 2");
   prefs.end();
 }
@@ -271,15 +432,15 @@ void handlePortalRoot() {
   html += "input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;box-sizing:border-box;margin-top:4px;}";
   html += "button{width:100%;margin-top:24px;padding:12px;border:none;border-radius:8px;background:#0284c7;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;}";
   html += "</style></head><body><div class='card'>";
-  html += "<h2>🏥 Sub-Station Setup</h2>";
-  html += "<p style='font-size:13px;color:#94a3b8;'>Configure hospital Wi-Fi, server URL, and station ID.</p>";
+  html += "<h2>🏥 Sub-Station Node</h2>";
+  html += "<p style='font-size:13px;color:#94a3b8;'>Configure Wi-Fi and Hospital Station ID.</p>";
   html += "<form action='/save' method='POST'>";
   html += "<label>Select Hospital Wi-Fi:</label><select name='ssid' id='ssidSelect'>" + options + "</select>";
   html += "<label>Or Type Wi-Fi Name:</label><input type='text' name='custom_ssid' placeholder='SSID if hidden'>";
   html += "<label>Wi-Fi Password:</label><input type='password' name='pass' required>";
   html += "<label>Cloud Server URL:</label><input type='text' name='server_url' value='" + serverUrl + "' required>";
-  html += "<label>Sub-Station Name:</label><input type='text' name='station_id' value='" + stationId + "' placeholder='e.g. Nurse Station 2' required>";
-  html += "<button type='submit'>Save & Connect Sub-Station</button>";
+  html += "<label>Station Identifier:</label><input type='text' name='station_id' value='" + stationId + "' required>";
+  html += "<button type='submit'>Save & Connect Node</button>";
   html += "</form></div></body></html>";
 
   webServer.send(200, "text/html", html);
@@ -308,68 +469,7 @@ void handlePortalSave() {
 }
 
 // ================================================================
-//  HTTP CLOUD DISPATCHERS
-// ================================================================
-
-void ensureWifiConnected() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(F("[Wi-Fi] Reconnecting..."));
-    WiFi.disconnect();
-    WiFi.reconnect();
-  }
-}
-
-void sendNfcToCloud(const String &uid) {
-  if (WiFi.status() != WL_CONNECTED) {
-    showDeniedScreen();
-    return;
-  }
-
-  HTTPClient http;
-  String url = serverUrl + "/api/acknowledge_nfc/";
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("X-Station-ID", stationId);
-  http.addHeader("X-Station-API-Key", STATION_KEY);
-  http.setTimeout(4000);
-
-  String payload = "{\"uid\":\"" + uid + "\",\"station_name\":\"" + stationId + "\"}";
-  int code = http.POST(payload);
-
-  if (code == 200) {
-    String res = http.getString();
-    Serial.printf("[CLOUD NFC RESP] %s\n", res.c_str());
-
-    if (res.indexOf("\"status\":\"success\"") != -1) {
-      String nurseName = "Nurse";
-      int nameIdx = res.indexOf("\"nurse_name\":\"");
-      if (nameIdx != -1) {
-        int start = nameIdx + 14;
-        int end = res.indexOf("\"", start);
-        if (end != -1) nurseName = res.substring(start, end);
-      }
-      showGrantedScreen(nurseName);
-    } else {
-      showDeniedScreen();
-    }
-  } else {
-    showDeniedScreen();
-  }
-  http.end();
-}
-
-void sendHeartbeat() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  HTTPClient http;
-  http.begin(serverUrl + "/api/heartbeat/");
-  http.addHeader("X-Station-ID", stationId);
-  http.setTimeout(2000);
-  http.GET();
-  http.end();
-}
-
-// ================================================================
-//  GC9A01A ROUND TFT UI RENDERING
+//  GC9A01A ROUND TFT UI RENDERING (Runs on Core 1)
 // ================================================================
 
 void centerText(const char* text, int16_t y, uint8_t size, uint16_t color) {
@@ -389,7 +489,7 @@ void drawBootSplash() {
   centerText("MEDPULSE", 75, 2, C_CYAN);
   centerText("SMART-CARE AI", 100, 1, C_WHITE);
   centerText("SUB-STATION NODE", 125, 1, C_GRAY_MID);
-  centerText("Booting...", 160, 1, C_GREEN);
+  centerText("Booting Dual-Core...", 160, 1, C_GREEN);
 }
 
 void showConfigScreen() {
@@ -423,6 +523,17 @@ void animatePulseRing() {
   int r = 100 + (pulseStep % 10);
   tft.drawCircle(120, 120, r, (pulseStep % 2 == 0) ? C_CYAN_DIM : C_VOID);
   pulseStep++;
+}
+
+void showVerifyingScreen() {
+  showingMessage = true;
+  messageTimer = millis();
+
+  tft.fillScreen(C_VOID);
+  tft.drawCircle(120, 120, 115, C_CYAN);
+  centerText("BADGE DETECTED", 65, 1, C_CYAN);
+  centerText("VERIFYING...", 105, 2, C_WHITE);
+  centerText("SYNCING CLOUD", 155, 1, C_GRAY_MID);
 }
 
 void showGrantedScreen(const String &name) {

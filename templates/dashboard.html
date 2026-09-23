@@ -153,7 +153,7 @@
 
         async function updateDashboard() {
             try {
-                const res = await fetch('/api/calls/');
+                const res = await fetch(`/api/calls/?_t=${Date.now()}`, { cache: 'no-store' });
                 const activeCalls = await res.json();
 
                 document.querySelectorAll('.room-box').forEach(box => {
@@ -214,7 +214,7 @@
             if (event.key === 'Enter') {
                 stopAllAudio();
                 try {
-                    const res = await fetch('/api/calls/');
+                    const res = await fetch(`/api/calls/?_t=${Date.now()}`, { cache: 'no-store' });
                     const activeCalls = await res.json();
                     for (let call of activeCalls) {
                         await fetch('/api/calls/clear/', {
@@ -231,7 +231,7 @@
             }
         });
 
-        setInterval(updateDashboard, 1500);
+        setInterval(updateDashboard, 500);
         
         document.body.addEventListener('click', () => {
             console.log("Audio ready");

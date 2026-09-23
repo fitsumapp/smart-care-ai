@@ -1367,7 +1367,7 @@
   // Auto-polling for active calls
   let previousActiveCount = parseInt("{{ supervisor.active_now|default:0 }}", 10) || 0;
   function fetchAlertsNow() {
-    fetch('/api/calls/')
+    fetch('/api/calls/?_t=' + Date.now(), { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         const activeCalls = Array.isArray(data) ? data : [];

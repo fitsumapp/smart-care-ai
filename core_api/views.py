@@ -11,6 +11,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -213,6 +214,7 @@ def nurse_analytics(request):
 
 # 3. Nurse Dashboard
 @login_required
+@never_cache
 def nurse_dashboard(request):
     try:
         station = NurseStation.objects.get(user=request.user)
@@ -238,12 +240,16 @@ def nurse_dashboard(request):
                 'active_calls': room_calls
             })
 
-        return render(request, 'nurse_dashboard.html', {
+        response = render(request, 'nurse_dashboard.html', {
             'station_name': station.station_name,
             'room_data_list': room_data_list,
             'start_room': station.start_room,
             'end_room': station.end_room,
         })
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
     except NurseStation.DoesNotExist:
         return render(request, 'nurse_dashboard.html', {'error': 'No station assigned to you'})
 
@@ -337,6 +343,7 @@ def send_escalation_sms(call_id):
 
 # 4. APIs
 @csrf_exempt
+@never_cache
 def call_log_api(request):
     if request.method == 'POST':
         body_data = {}
@@ -463,7 +470,10 @@ def call_log_api(request):
             else:
                 call.stations.set(NurseStation.objects.all())
 
-            return JsonResponse({'status': 'call_recorded', 'id': call.id, 'call_type': ctype, 'location_type': location_type}, status=201)
+            resp = JsonResponse({'status': 'call_recorded', 'id': call.id, 'call_type': ctype, 'location_type': location_type}, status=201)
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            resp['Pragma'] = 'no-cache'
+            return resp
 
         elif action == 'arrived':
             sp = SpecialRoom.objects.filter(Q(emergency_id=rm) | Q(regular_id=rm)).first()
@@ -477,9 +487,12 @@ def call_log_api(request):
             )
             
             if updated > 0:
-                return JsonResponse({'status': 'arrived_recorded'})
+                resp = JsonResponse({'status': 'arrived_recorded'})
             else:
-                return JsonResponse({'status': 'must_acknowledge_first'}, status=400)
+                resp = JsonResponse({'status': 'must_acknowledge_first'}, status=400)
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            resp['Pragma'] = 'no-cache'
+            return resp
 
     # GET - For Nurse Dashboard
     # priority ascending: 1(Critical) first, 3(Normal) last
@@ -512,9 +525,14 @@ def call_log_api(request):
             'notes':            c.notes or '',
             'duration':         int((now - c.created_at).total_seconds()),
         })
-    return JsonResponse(data, safe=False)
+    response = JsonResponse(data, safe=False)
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 @csrf_exempt
+@never_cache
 def clear_call_api(request):
     if request.method == 'POST':
         try:
@@ -537,7 +555,9 @@ def clear_call_api(request):
                     cleared_at=now,
                     is_acknowledged=True
                 )
-                return JsonResponse({'status': 'success', 'cleared_all': True, 'count': updated_count})
+                resp = JsonResponse({'status': 'success', 'cleared_all': True, 'count': updated_count})
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                return resp
 
             # 2. Resolve or Acknowledge by call_id
             if call_id:
@@ -548,7 +568,7 @@ def clear_call_api(request):
                         if not call.acknowledged_at:
                             call.acknowledged_at = now
                         call.save()
-                        return JsonResponse({'status': 'success', 'acknowledged': True, 'id': call.id})
+                        resp = JsonResponse({'status': 'success', 'acknowledged': True, 'id': call.id})
                     else:
                         # Default is resolve & dismiss: marks is_active=False
                         call.is_active = False
@@ -557,8 +577,12 @@ def clear_call_api(request):
                             call.is_acknowledged = True
                             call.acknowledged_at = now
                         call.save()
-                        return JsonResponse({'status': 'success', 'resolved': True, 'id': call.id})
-                return JsonResponse({'status': 'error', 'message': 'Call not found'}, status=404)
+                        resp = JsonResponse({'status': 'success', 'resolved': True, 'id': call.id})
+                    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                    return resp
+                resp = JsonResponse({'status': 'error', 'message': 'Call not found'}, status=404)
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                return resp
 
             # 3. Clear or Acknowledge by room_number
             if rm:
@@ -574,14 +598,23 @@ def clear_call_api(request):
                     call_qs.update(
                         is_acknowledged=True, acknowledged_at=now
                     )
-                return JsonResponse({'status': 'success', 'room': rm})
+                resp = JsonResponse({'status': 'success', 'room': rm})
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                return resp
 
-            return JsonResponse({'status': 'error', 'message': 'Missing call_id or room_number'}, status=400)
+            resp = JsonResponse({'status': 'error', 'message': 'Missing call_id or room_number'}, status=400)
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            return resp
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-    return JsonResponse({'status': 'failed'}, status=400)
+            resp = JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            return resp
+    resp = JsonResponse({'status': 'failed'}, status=400)
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    return resp
 
 @csrf_exempt
+@never_cache
 def acknowledge_nfc_api(request):
     """ Handles NFC card scans from Desktop Bridge or Web Serial API. """
     if request.method == 'POST':
@@ -610,7 +643,9 @@ def acknowledge_nfc_api(request):
                            NurseStation.objects.first())
 
             if not uid:
-                return JsonResponse({"status": "error", "message": "Missing RFID UID."}, status=400)
+                resp = JsonResponse({"status": "error", "message": "Missing RFID UID."}, status=400)
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                return resp
 
             # Find nurse by exact UID or cleaned UID
             nurse = Nurse.objects.filter(rfid_uid__iexact=uid).first()
@@ -621,7 +656,9 @@ def acknowledge_nfc_api(request):
                         break
 
             if not nurse:
-                return JsonResponse({"status": "error", "message": f"Invalid card: {uid}"}, status=404)
+                resp = JsonResponse({"status": "error", "message": f"Invalid card: {uid}"}, status=404)
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                return resp
 
             # Find the oldest active unacknowledged call
             active_call = None
@@ -650,18 +687,25 @@ def acknowledge_nfc_api(request):
                 room_name = active_call.room_number
 
             first_name = nurse.full_name.split()[0] if nurse.full_name else "Nurse"
-            return JsonResponse({
+            resp = JsonResponse({
                 "status": "success",
                 "nurse_name": first_name,
                 "full_name": nurse.full_name,
                 "nurse_id": nurse.nurse_id,
                 "room": room_name
             })
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            return resp
         except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    return JsonResponse({"status": "failed"}, status=400)
+            resp = JsonResponse({"status": "error", "message": str(e)}, status=500)
+            resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            return resp
+    resp = JsonResponse({"status": "failed"}, status=400)
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    return resp
 
 @csrf_exempt
+@never_cache
 def check_reset_api(request):
     """ API to check for hardware reset (Arduino) """
     ack_calls = AICallLog.objects.filter(is_acknowledged=True, is_notified=False)
@@ -682,22 +726,34 @@ def check_reset_api(request):
     ack_calls.update(is_notified=True)
     arrived_calls.update(is_active=False, cleared_at=timezone.now())
     
-    return JsonResponse({'reset_rooms': rooms_to_reset})
+    resp = JsonResponse({
+        'reset_rooms': rooms_to_reset,
+        'resets': rooms_to_reset
+    })
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    resp['Pragma'] = 'no-cache'
+    resp['Expires'] = '0'
+    return resp
 
 @csrf_exempt
+@never_cache
 def heartbeat_api(request):
     """ Heartbeat API for Desktop / Hardware Bridges """
     cache.set('bridge_last_heartbeat', time.time(), 30)
-    return JsonResponse({'status': 'ok'})
+    resp = JsonResponse({'status': 'ok'})
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    return resp
 
+@never_cache
 def system_status_api(request):
     """ Dashboard API to check bridge status """
     last_hb = cache.get('bridge_last_heartbeat')
     is_online = False
     if last_hb and (time.time() - last_hb < 25):
         is_online = True
-    return JsonResponse({'online': is_online})
-    return render(request, 'edit_special_room.html', {'room': room, 'all_stations': NurseStation.objects.all()})
+    resp = JsonResponse({'online': is_online})
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    return resp
 
 @staff_member_required
 def reports_page(request):

@@ -906,81 +906,39 @@
             }
         }
 
-        /* ── Triage staggering: CLIENT-SIDE TIMER ─────────────────
-           When concurrent calls arrive, we note the moment the
-           FIRST (highest-priority) call becomes visible, then delay
-           lower-priority calls by exact wall-clock seconds.
-    
-           "Concurrent" = two calls whose server-side durations
-           differ by ≤ 3 seconds at the time of detection.
-    
-           Rules:
-             Critical (1)  → show immediately, record firstCriticalAt
-             Urgent   (2)  → if concurrent Critical: show 2 s after firstCriticalAt
-             Normal   (3)  → if concurrent C+U: show 4 s after firstCriticalAt
-                              if concurrent C or U: show 2 s after firstCriticalAt
-                              else: show immediately
+        /* ── ZERO-LATENCY CLINICAL TRIAGE ─────────────────────────
+           In a hospital life-safety system, human lives are at stake.
+           All alerts are displayed immediately (0ms artificial delay)
+           without wall-clock staggering.
         ────────────────────────────────────────────────────────── */
-        let firstCriticalSeenAt = null;   // wall-clock ms
-        let firstUrgentSeenAt = null;
-
         function getVisibleCalls(calls) {
-            const now = Date.now();
-
-            // --- determine concurrency (using server duration diff ≤ 3 s) ---
-            const unack = calls.filter(c => !c.is_acknowledged);
-            const hasConcurrentC = unack.filter(c => c.priority === '1').length > 0;
-            const hasConcurrentU = unack.filter(c => c.priority === '2').length > 0;
-
-            // If there IS a Critical call, track when we first noticed it
-            if (hasConcurrentC && firstCriticalSeenAt === null) {
-                firstCriticalSeenAt = now;
-            }
-            if (hasConcurrentU && firstUrgentSeenAt === null) {
-                firstUrgentSeenAt = now;
-            }
-            // Reset timers when all calls of that priority are gone
-            if (!hasConcurrentC) firstCriticalSeenAt = null;
-            if (!hasConcurrentU) firstUrgentSeenAt = null;
-
-            return calls.filter(call => {
-                if (call.is_acknowledged) return true;
-                if (call.priority === '1') return true;   // Critical: always immediate
-
-                // Check if this call is concurrent with a higher-priority call
-                // (server durations differ by ≤ 3 s)
-                const isConC = hasConcurrentC && unack.some(c =>
-                    c.priority === '1' && Math.abs(c.duration - call.duration) <= 3
-                );
-                const isConU = hasConcurrentU && unack.some(c =>
-                    c.priority === '2' && c.id !== call.id &&
-                    Math.abs(c.duration - call.duration) <= 3
-                );
-
-                if (call.priority === '2') {
-                    if (!isConC) return true;  // not concurrent → show immediately
-                    // concurrent Critical: wait 2 s from when Critical first appeared
-                    return firstCriticalSeenAt !== null && (now - firstCriticalSeenAt) >= 2000;
-                }
-
-                if (call.priority === '3') {
-                    if (!isConC && !isConU) return true;  // isolated → show immediately
-                    const ref = firstCriticalSeenAt || firstUrgentSeenAt;
-                    if (!ref) return true;
-                    const delay = (isConC && isConU) ? 4000 : 2000;
-                    return (now - ref) >= delay;
-                }
-
-                return true;
-            });
+            return calls;
         }
 
-        /* ── refreshDashboard ────────────────────────────────── */
+        /* ── refreshDashboard (Zero-Cache, Sub-Second Polling) ── */
+        let isRefreshing = false;
+        let refreshAbortController = null;
+
         function refreshDashboard() {
-            fetch('/api/calls/')
+            if (isRefreshing) return;
+            isRefreshing = true;
+
+            if (refreshAbortController) {
+                try { refreshAbortController.abort(); } catch(e) {}
+            }
+            refreshAbortController = new AbortController();
+
+            fetch(`/api/calls/?_t=${Date.now()}`, {
+                cache: 'no-store',
+                signal: refreshAbortController.signal,
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                }
+            })
                 .then(r => r.json())
                 .then(data => {
-                    activeCalls = data;
+                    activeCalls = Array.isArray(data) ? data : [];
                     document.getElementById('dbg-a').innerText = activeCalls.length;
                     renderUI();
 
@@ -1001,7 +959,12 @@
                     // Render AI Safety Corner Alerts
                     renderAICornerAlerts();
                 })
-                .catch(() => { });
+                .catch(err => {
+                    // Ignore abort cancellations
+                })
+                .finally(() => {
+                    isRefreshing = false;
+                });
         }
 
         /* ── renderAICornerAlerts ─────────────────────────────── */
@@ -1214,7 +1177,7 @@
         /* ── acknowledgeFirstCall (Enter key) ────────────────── */
         async function acknowledgeFirstCall() {
             try {
-                const res = await fetch('/api/calls/');
+                const res = await fetch(`/api/calls/?_t=${Date.now()}`, { cache: 'no-store' });
                 const data = await res.json();
                 const visible = getVisibleCalls(data)
                     .filter(c => !c.is_acknowledged)
@@ -1276,9 +1239,18 @@
             }).then(() => refreshDashboard());
         }
 
-        /* ── start ───────────────────────────────────────────── */
-        setInterval(refreshDashboard, 800);
+        /* ── start (Ultra-Fast 400ms Real-Time Polling) ──────── */
+        setInterval(refreshDashboard, 400);
         refreshDashboard();
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshDashboard();
+            }
+        });
+        window.addEventListener('focus', () => {
+            refreshDashboard();
+        });
 
         /* ── Web Serial API (NFC Reader) ─────────────────────── */
         let port;
