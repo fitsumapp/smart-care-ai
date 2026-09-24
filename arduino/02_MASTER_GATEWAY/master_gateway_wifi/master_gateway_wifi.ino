@@ -163,7 +163,8 @@ void setup() {
   digitalWrite(NFC_SS_PIN, LOW);
   rfid.PCD_Init();
   delay(10);
-  rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
+  // Set balanced antenna gain (RxGain_38dB) to prevent box RF saturation and display SPI interference
+  rfid.PCD_SetAntennaGain(MFRC522::RxGain_38dB);
   byte nfcVer = rfid.PCD_ReadRegister(MFRC522::VersionReg);
   digitalWrite(NFC_SS_PIN, HIGH);
   Serial.printf("[NFC HARDWARE] MFRC522 Chip Version: 0x%02X\n", nfcVer);
@@ -341,36 +342,39 @@ void loop() {
     }
   }
 
-  // 3. Ultra-Fast NFC Polling (< 5ms Tap Detection)
-  // De-assert TFT and assert RFID
-  digitalWrite(TFT_CS, HIGH);
-  digitalWrite(NFC_SS_PIN, LOW);
+  // 3. Paced NFC Polling (Every 40ms — Eliminates SPI Bus saturation & Display freezing in close proximity)
+  static unsigned long lastNfcPoll = 0;
+  if (now - lastNfcPoll >= 40) {
+    lastNfcPoll = now;
+    digitalWrite(TFT_CS, HIGH);
+    digitalWrite(NFC_SS_PIN, LOW);
 
-  if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-    String uid = "";
-    for (byte i = 0; i < rfid.uid.size; i++) {
-      if (rfid.uid.uidByte[i] < 0x10) uid += "0";
-      uid += String(rfid.uid.uidByte[i], HEX);
+    if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
+      String uid = "";
+      for (byte i = 0; i < rfid.uid.size; i++) {
+        if (rfid.uid.uidByte[i] < 0x10) uid += "0";
+        uid += String(rfid.uid.uidByte[i], HEX);
+      }
+      uid.toUpperCase();
+      Serial.printf("[NFC SCAN] Detected Badge UID: %s\n", uid.c_str());
+
+      rfid.PICC_HaltA();
+      rfid.PCD_StopCrypto1();
+      digitalWrite(NFC_SS_PIN, HIGH);
+
+      // Immediate local visual feedback (< 1ms)
+      showVerifyingScreen();
+
+      // Enqueue to Core 0 Network Worker
+      if (netQueue != NULL) {
+        NetEvent ev;
+        ev.type = NET_EVENT_NFC;
+        strncpy(ev.uid, uid.c_str(), sizeof(ev.uid) - 1);
+        xQueueSend(netQueue, &ev, 0);
+      }
+    } else {
+      digitalWrite(NFC_SS_PIN, HIGH);
     }
-    uid.toUpperCase();
-    Serial.printf("[NFC SCAN] Detected Badge UID: %s\n", uid.c_str());
-
-    rfid.PICC_HaltA();
-    rfid.PCD_StopCrypto1();
-    digitalWrite(NFC_SS_PIN, HIGH);
-
-    // Immediate local visual feedback (< 1ms)
-    showVerifyingScreen();
-
-    // Enqueue to Core 0 Network Worker
-    if (netQueue != NULL) {
-      NetEvent ev;
-      ev.type = NET_EVENT_NFC;
-      strncpy(ev.uid, uid.c_str(), sizeof(ev.uid) - 1);
-      xQueueSend(netQueue, &ev, 0);
-    }
-  } else {
-    digitalWrite(NFC_SS_PIN, HIGH);
   }
 
   // 4. Built-in Test: BOOT button (GPIO 0) simulates patient call
